@@ -340,12 +340,21 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     df['Hourly_Grid_Emissions_eGRID_lb'] = df['Grid_Consumption'] * df['Emissions_Factor_eGRID_lb_MWh']
     grid_emissions_egrid_mt = df['Hourly_Grid_Emissions_eGRID_lb'].sum() * lb_to_mt
     
+    # Avoided eGRID
+    df['Hourly_Avoided_Emissions_eGRID_lb'] = df['Effective_Gen'] * df['Emissions_Factor_eGRID_lb_MWh']
+    avoided_emissions_egrid_mt = df['Hourly_Avoided_Emissions_eGRID_lb'].sum() * lb_to_mt
+    
     # 2. Hourly Emissions (if available)
     grid_emissions_hourly_mt = None
+    avoided_emissions_hourly_mt = None
     if hourly_emissions_lb_mwh is not None and len(hourly_emissions_lb_mwh) == len(df):
         df['Emissions_Factor_Hourly_lb_MWh'] = hourly_emissions_lb_mwh
         df['Hourly_Grid_Emissions_Hourly_lb'] = df['Grid_Consumption'] * df['Emissions_Factor_Hourly_lb_MWh']
         grid_emissions_hourly_mt = df['Hourly_Grid_Emissions_Hourly_lb'].sum() * lb_to_mt
+        
+        # Avoided Hourly
+        df['Hourly_Avoided_Emissions_Hourly_lb'] = df['Effective_Gen'] * df['Emissions_Factor_Hourly_lb_MWh']
+        avoided_emissions_hourly_mt = df['Hourly_Avoided_Emissions_Hourly_lb'].sum() * lb_to_mt
         
         # Set primary factor based on logic
         if emissions_logic == "hourly":
@@ -459,6 +468,8 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         "grid_emissions_egrid_mt": grid_emissions_egrid_mt,
         "grid_emissions_hourly_mt": grid_emissions_hourly_mt,
         "avoided_emissions_mt": avoided_emissions_mt,
+        "avoided_emissions_egrid_mt": avoided_emissions_egrid_mt,
+        "avoided_emissions_hourly_mt": avoided_emissions_hourly_mt,
         "location_based_emissions_mt": location_based_emissions_mt,
         "mw_match_productivity": mw_match_productivity,
         "total_rec_cost": total_rec_cost,

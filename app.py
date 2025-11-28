@@ -697,6 +697,10 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             value=f"{results['avoided_emissions_mt']:,.0f} MT",
             help="Carbon factor where the clean energy is generated * Clean Energy Generation."
         )
+        if results.get('avoided_emissions_hourly_mt') is not None:
+             st.caption(f"Hourly Factors. (eGRID: {results['avoided_emissions_egrid_mt']:,.0f} MT)")
+        else:
+             st.caption("Annual eGRID Factor.")
             
     st.markdown("---")
     
