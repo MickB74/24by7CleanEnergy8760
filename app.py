@@ -399,7 +399,7 @@ with st.sidebar:
         region = st.selectbox("Region", ["ERCOT", "PJM", "CAISO", "MISO", "SPP", "NYISO", "ISO-NE"], key="region_selector")
         
         # Emissions Source
-        emissions_source = st.radio("Emissions Data Source", ["Hourly (CSV)", "Annual eGRID"], horizontal=True)
+        emissions_source = st.radio("Emissions Data Source", ["Hourly (CSV)", "Annual eGRID"], index=1, horizontal=True)
         emissions_logic = "hourly" if emissions_source == "Hourly (CSV)" else "egrid"
 
         # Load inputs (only for Estimate Load)
