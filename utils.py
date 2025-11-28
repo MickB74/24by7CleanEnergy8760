@@ -299,6 +299,9 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     # This is a simplified view; often avoided emissions use marginal rates, but we'll use average for now as per typical simple calculators.
     # We'll calculate it based on the TOTAL renewable generation, as if that MWh replaced grid MWh.
     avoided_emissions_mt = total_renewable_gen * egrid_factor_lb * lb_to_mt
+    
+    # Location Based Emissions: Total emissions if no renewables were used (Total Load * Grid Factor)
+    location_based_emissions_mt = total_annual_load * egrid_factor_lb * lb_to_mt
 
     # MW Match Productivity
     # Sum of min(Gen, Load) / Total Installed MW
@@ -404,10 +407,12 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         "grid_consumption": grid_consumption,
         "grid_emissions_mt": grid_emissions_mt,
         "avoided_emissions_mt": avoided_emissions_mt,
+        "location_based_emissions_mt": location_based_emissions_mt,
         "mw_match_productivity": mw_match_productivity,
         "total_rec_cost": total_rec_cost,
         "total_rec_revenue": total_rec_revenue,
-        "net_rec_cost": net_rec_cost
+        "net_rec_cost": net_rec_cost,
+        "egrid_factor_lb": egrid_factor_lb
     }
     
     # Rename base columns to avoid confusion

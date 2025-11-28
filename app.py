@@ -47,7 +47,7 @@ st.markdown("""
             color: #285477;
         }
         [data-testid="stMetricLabel"] {
-            font-size: 0.875rem !important;
+            font-size: 1.1rem !important;
             color: #666666;
             font-weight: 500;
             text-transform: uppercase;
@@ -91,7 +91,7 @@ st.markdown("""
         }
 
         /* Remove default Streamlit top padding/decoration if possible */
-        header {visibility: hidden;}
+        /* header {visibility: hidden;} */
     </style>
 """, unsafe_allow_html=True)
 
@@ -147,78 +147,79 @@ with st.sidebar:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Region
-    region = st.selectbox("Region", ["ERCOT", "PJM", "CAISO", "MISO", "SPP", "NYISO", "ISO-NE"], key="region_selector")
+    with st.form("analysis_config"):
+        # Region
+        region = st.selectbox("Region", ["ERCOT", "PJM", "CAISO", "MISO", "SPP", "NYISO", "ISO-NE"], key="region_selector")
 
-    st.markdown("### 1. Load Profile")
-    load_source = st.radio("Load Source", ["Estimate Load", "Upload File"], label_visibility="collapsed")
+        st.markdown("### 1. Load Profile")
+        load_source = st.radio("Load Source", ["Estimate Load", "Upload File"], label_visibility="collapsed")
 
-    load_inputs = {}
-    if load_source == "Estimate Load":
-        # Simplified Load Inputs for UI cleanliness, mapped to existing logic
-        st.caption("Define annual consumption for building types.")
-        
-        # Use columns for compact inputs
-        c1, c2 = st.columns(2)
-        for i, b_type in enumerate(building_types):
-            with (c1 if i % 2 == 0 else c2):
-                val = st.number_input(
-                    f"{b_type} (MWh)",
-                    min_value=0,
-                    step=50000,
-                    key=f"load_{b_type}"
-                )
-                load_inputs[b_type] = val
-    else:
-        uploaded_load_file = st.file_uploader("Upload Load CSV", type=['csv', 'xlsx'])
-        # Placeholder for file processing logic integration
-
-    st.markdown("### 2. Renewables")
-    st.caption("Define capacity (MW) for generation assets.")
-    rc1, rc2 = st.columns(2)
-    with rc1:
-        solar_capacity = st.number_input("Solar (MW)", min_value=0.0, step=10.0, key="solar_capacity")
-    with rc2:
-        wind_capacity = st.number_input("Wind (MW)", min_value=0.0, step=10.0, key="wind_capacity")
-
-    st.markdown("### 3. Storage")
-    battery_capacity = st.number_input("Battery Capacity (MWh)", min_value=0.0, step=100.0, value=0.0, help="Battery storage capacity for optimized charge/discharge")
-
-    st.markdown("### 4. Financials")
-    base_rec_price = st.number_input("Base REC Price ($/MWh)", value=0.50, step=0.10, min_value=0.0)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    generate_clicked = st.button("Generate Analysis", type="primary")
-
-    if generate_clicked:
-        with st.spinner("Calculating..."):
-            # Logic adapted from previous app.py
-            portfolio_list = []
-            for b_type, val in load_inputs.items():
-                if val > 0:
-                    portfolio_list.append({'type': b_type, 'annual_mwh': val})
+        load_inputs = {}
+        if load_source == "Estimate Load":
+            # Simplified Load Inputs for UI cleanliness, mapped to existing logic
+            st.caption("Define annual consumption for building types.")
             
-            # Default if empty
-            if not portfolio_list and load_source == "Estimate Load":
-                # Add a dummy load if nothing selected to avoid crash, or handle gracefully
-                pass 
+            # Use columns for compact inputs
+            c1, c2 = st.columns(2)
+            for i, b_type in enumerate(building_types):
+                with (c1 if i % 2 == 0 else c2):
+                    val = st.number_input(
+                        f"{b_type} (MWh)",
+                        min_value=0,
+                        step=50000,
+                        key=f"load_{b_type}"
+                    )
+                    load_inputs[b_type] = val
+        else:
+            uploaded_load_file = st.file_uploader("Upload Load CSV", type=['csv', 'xlsx'])
+            # Placeholder for file processing logic integration
 
-            # Generate Data
-            df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region)
-            
-            # Calculate Metrics
-            results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity)
-            
-            st.session_state.portfolio_data = {
-                "results": results,
-                "df": df_result,
-                "region": region,
-                "solar_capacity": solar_capacity,
-                "wind_capacity": wind_capacity
-            }
-            st.session_state.analysis_complete = True
-            st.rerun()
+        st.markdown("### 2. Renewables")
+        st.caption("Define capacity (MW) for generation assets.")
+        rc1, rc2 = st.columns(2)
+        with rc1:
+            solar_capacity = st.number_input("Solar (MW)", min_value=0.0, step=10.0, key="solar_capacity")
+        with rc2:
+            wind_capacity = st.number_input("Wind (MW)", min_value=0.0, step=10.0, key="wind_capacity")
+
+        st.markdown("### 3. Storage")
+        battery_capacity = st.number_input("Battery Capacity (MWh)", min_value=0.0, step=100.0, value=0.0, help="Battery storage capacity for optimized charge/discharge")
+
+        st.markdown("### 4. Financials")
+        base_rec_price = st.number_input("Base REC Price ($/MWh)", value=0.50, step=0.10, min_value=0.0)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        generate_clicked = st.form_submit_button("Generate Analysis", type="primary")
+
+        if generate_clicked:
+            with st.spinner("Calculating..."):
+                # Logic adapted from previous app.py
+                portfolio_list = []
+                for b_type, val in load_inputs.items():
+                    if val > 0:
+                        portfolio_list.append({'type': b_type, 'annual_mwh': val})
+                
+                # Default if empty
+                if not portfolio_list and load_source == "Estimate Load":
+                    # Add a dummy load if nothing selected to avoid crash, or handle gracefully
+                    pass 
+
+                # Generate Data
+                df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region)
+                
+                # Calculate Metrics
+                results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity)
+                
+                st.session_state.portfolio_data = {
+                    "results": results,
+                    "df": df_result,
+                    "region": region,
+                    "solar_capacity": solar_capacity,
+                    "wind_capacity": wind_capacity
+                }
+                st.session_state.analysis_complete = True
+                st.rerun()
 
 
 # Results Section (Main Area)
@@ -250,7 +251,6 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             value=f"{results['annual_re_percent']:.1f}%",
             help="The ratio of total annual renewable generation to total annual electricity consumption (not matched hourly)."
         )
-    st.caption(f"Gen: {results['total_renewable_gen']:,.0f} MWh | Load: {results['total_annual_load']:,.0f} MWh")
     
     with m4:
         # Placeholder for "Hours Fully Matched" - let's calculate it roughly
@@ -260,20 +260,35 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             value=f"{fully_matched_hours:,}",
             help="The number of hours in the year where generation fully meets or exceeds load."
         )
+
+    # Total Generation and Load Row
+    m_gen, m_load = st.columns(2)
+    with m_gen:
+        st.metric(
+            label="Total Clean Energy Generation",
+            value=f"{results['total_renewable_gen']:,.0f} MWh",
+            help="Total renewable energy generated annually."
+        )
+    with m_load:
+        st.metric(
+            label="Total Load",
+            value=f"{results['total_annual_load']:,.0f} MWh",
+            help="Total annual electricity consumption."
+        )
             
     # Second Metrics Row
     m5, m6 = st.columns(2)
     
     with m5:
         st.metric(
-            label="MWh Needed",
+            label="MWh Needed for 24/7",
             value=f"{results['grid_consumption']:,.0f}",
             help="Total electricity load that could not be met by renewable generation (Grid Consumption)."
         )
             
     with m6:
         st.metric(
-            label="MWh Overgeneration",
+            label="MWh Overgenerated for 24/7",
             value=f"{results['overgeneration']:,.0f}",
             help="Total renewable generation in excess of load during hours where generation exceeds load."
         )
@@ -295,7 +310,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     with f1:
         avg_cost_per_mwh = abs(results['total_rec_cost'] / results['grid_consumption']) if results['grid_consumption'] > 0 else 0
         st.metric(
-            label="Total REC Cost",
+            label="Total REC Cost for 24/7",
             value=format_currency(results['total_rec_cost']),
             help="Cost to buy RECs for deficit hours."
         )
@@ -303,7 +318,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     with f2:
         avg_revenue_per_mwh = results['total_rec_revenue'] / results['overgeneration'] if results['overgeneration'] > 0 else 0
         st.metric(
-            label="Total REC Revenue",
+            label="Total REC Revenue from Overgeneration",
             value=format_currency(results['total_rec_revenue']),
             help="Revenue from selling RECs during surplus hours."
         )
@@ -313,6 +328,32 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             label="Net REC Cost",
             value=format_currency(results['net_rec_cost']),
             help="Total Cost - Total Revenue. Positive means net cost, negative means net profit."
+        )
+            
+    st.markdown("---")
+    
+    # Carbon Impact Row
+    st.markdown("### Carbon Impact")
+    
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric(
+            label="Location Based Emissions",
+            value=f"{results['location_based_emissions_mt']:,.0f} MT",
+            help="Total emissions if no renewables were used (Total Load * Grid Factor). Note: If there is overgeneration, Avoided + Grid Emissions will be greater than Location Based, as you avoid extra emissions by exporting clean energy."
+        )
+        st.caption(f"Grid Factor: {results['egrid_factor_lb']:.1f} lb/MWh")
+    with c2:
+        st.metric(
+            label="Market Based 24/7 Emissions",
+            value=f"{results['grid_emissions_mt']:,.0f} MT",
+            help="Estimated CO2e emissions from grid electricity consumption that is not hourly matched to clean energy."
+        )
+    with c3:
+        st.metric(
+            label="Consequential Emission Reduction",
+            value=f"{results['avoided_emissions_mt']:,.0f} MT",
+            help="Carbon factor where the clean energy is generated * Clean Energy Generation."
         )
             
     st.markdown("---")
@@ -408,12 +449,43 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     st.altair_chart(rec_heatmap, use_container_width=True)
     
     # Auto-Insights
+    # Auto-Insights Logic
+    insights = []
+    
+    # 1. Generation Dominance
+    total_solar = df['Solar_Gen'].sum()
+    total_wind = df['Wind_Gen'].sum()
+    total_gen = total_solar + total_wind
+    
+    if total_gen > 0:
+        solar_share = total_solar / total_gen
+        if solar_share > 0.6:
+            insights.append(f"**Solar-dominant profile:** {solar_share:.0%} of generation comes from solar assets.")
+        elif solar_share < 0.4:
+            insights.append(f"**Wind-dominant profile:** {(1-solar_share):.0%} of generation comes from wind assets.")
+        else:
+            insights.append(f"**Balanced profile:** Mix of Solar ({solar_share:.0%}) and Wind ({(1-solar_share):.0%}).")
+            
+    # 2. Deficit Hours (Time of day with lowest CFE)
+    # heatmap_agg is already calculated: ['MonthNum', 'Month', 'Hour', 'Hourly_CFE_Ratio']
+    # Group by Hour to find worst time of day on average
+    hourly_avg_cfe = df.groupby(df['timestamp'].dt.hour)['Hourly_CFE_Ratio'].mean()
+    worst_hour = hourly_avg_cfe.idxmin()
+    worst_hour_val = hourly_avg_cfe.min()
+    
+    # Format hour nicely
+    worst_hour_str = pd.to_datetime(f"2023-01-01 {worst_hour}:00").strftime("%I %p").lstrip("0")
+    insights.append(f"**Lowest match time:** Average CFE drops to {worst_hour_val:.0%} around {worst_hour_str}.")
+
+    # 3. Seasonal Lows
+    monthly_avg_gen = df.groupby(df['timestamp'].dt.month_name())['Total_Renewable_Gen'].mean()
+    worst_month = monthly_avg_gen.idxmin()
+    insights.append(f"**Seasonal low:** Lowest average renewable generation observed in {worst_month}.")
+
     st.subheader("Auto-Insights")
-    st.markdown("""
-    *   **Evening mismatch detected:** Significant deficits observed between 6 PM and 10 PM.
-    *   **Winter shoulder season:** Lower renewable generation during Jan-Feb.
-    *   **Solar-dominant profile:** 70% of generation comes from solar assets.
-    """)
+    st.caption(f"Debug: Solar Cap={st.session_state.get('solar_capacity')}, Wind Cap={st.session_state.get('wind_capacity')}")
+    for insight in insights:
+        st.markdown(f"* {insight}")
     
     # Export
     st.markdown("<br>", unsafe_allow_html=True)
