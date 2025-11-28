@@ -133,11 +133,37 @@ def generate_synthetic_8760_data(year=2023, building_portfolio=None, region="Nat
     wind_profile = wind_seasonality * wind_daily * wind_noise * params["wind_base"] 
     wind_profile = np.clip(wind_profile, 0, 100) 
     
+    # Nuclear - Baseload with 90-95% capacity factor (constant output)
+    nuclear_capacity_factor = 0.92 + np.random.normal(0, 0.01, size=len(dates))
+    nuclear_capacity_factor = np.clip(nuclear_capacity_factor, 0.88, 0.96)
+    nuclear_profile = nuclear_capacity_factor * 100
+    
+    # Geothermal - Baseload with regional variation
+    # Higher in Western US (CAISO, SPP), lower elsewhere
+    geo_base_cf = 0.85 if region in ["CAISO", "SPP"] else 0.75
+    geo_capacity_factor = geo_base_cf + np.random.normal(0, 0.02, size=len(dates))
+    geo_capacity_factor = np.clip(geo_capacity_factor, geo_base_cf - 0.05, geo_base_cf + 0.05)
+    geothermal_profile = geo_capacity_factor * 100
+    
+    # Hydropower - Seasonal variation (higher in spring/summer, lower in fall/winter)
+    # Regional variation in capacity factor
+    hydro_base_cf = 0.45 if region == "CAISO" else (0.40 if region in ["PJM", "NYISO", "ISO-NE"] else 0.35)
+    # Spring runoff pattern: peak in April-June, low in fall/winter
+    hydro_seasonality = 1 + 0.4 * np.sin((day_of_year - 120) * 2 * np.pi / 365)  # Peak around day 120 (late April)
+    hydro_capacity_factor = hydro_base_cf * hydro_seasonality
+    # Add some daily variation (water flow management)
+    hydro_daily_pattern = 1 + 0.1 * np.sin((hour_of_day - 12) * 2 * np.pi / 24)
+    hydro_profile = hydro_capacity_factor * hydro_daily_pattern * 100
+    hydro_profile = np.clip(hydro_profile, 0, 100)
+    
     # Load Generation
     df = pd.DataFrame({
         'timestamp': dates,
         'Solar': solar_profile,
-        'Wind': wind_profile
+        'Wind': wind_profile,
+        'Nuclear': nuclear_profile,
+        'Geothermal': geothermal_profile,
+        'Hydro': hydro_profile
     })
     
     total_load = np.zeros(len(dates))
@@ -184,20 +210,18 @@ def generate_synthetic_8760_data(year=2023, building_portfolio=None, region="Nat
     
     return df
 
-def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region="National Average", base_rec_price=0.50, battery_capacity_mwh=0.0, battery_efficiency=0.85):
+def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region="National Average", base_rec_price=0.50, battery_capacity_mwh=0.0, battery_efficiency=0.85, nuclear_capacity=0.0, geothermal_capacity=0.0, hydro_capacity=0.0):
     """
     Calculates portfolio metrics based on inputs.
-    df: DataFrame with 'Solar', 'Wind', 'Load' columns (normalized or base profiles)
+    df: DataFrame with 'Solar', 'Wind', 'Nuclear', 'Geothermal', 'Hydro', 'Load' columns
     solar_capacity: MW
     wind_capacity: MW
+    nuclear_capacity: MW
+    geothermal_capacity: MW
+    hydro_capacity: MW
     load_scaling: Multiplier for the base load profile
     """
     # Scale profiles
-    # Assuming input DF columns are already scaled or represent 1 unit/MW. 
-    # For synthetic data above, they are arbitrary. Let's normalize them to 1 MW capacity first if we want to scale.
-    # But for simplicity, let's assume the user inputs "Capacity" which scales the profile.
-    
-    # Normalize synthetic data to max 1 for scaling
     if 'Solar' in df.columns and df['Solar'].max() > 0:
         df['Solar_Gen'] = (df['Solar'] / df['Solar'].max()) * solar_capacity
     else:
@@ -207,14 +231,29 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         df['Wind_Gen'] = (df['Wind'] / df['Wind'].max()) * wind_capacity
     else:
         df['Wind_Gen'] = 0
+    
+    if 'Nuclear' in df.columns and df['Nuclear'].max() > 0:
+        df['Nuclear_Gen'] = (df['Nuclear'] / df['Nuclear'].max()) * nuclear_capacity
+    else:
+        df['Nuclear_Gen'] = 0
+    
+    if 'Geothermal' in df.columns and df['Geothermal'].max() > 0:
+        df['Geothermal_Gen'] = (df['Geothermal'] / df['Geothermal'].max()) * geothermal_capacity
+    else:
+        df['Geothermal_Gen'] = 0
+    
+    if 'Hydro' in df.columns and df['Hydro'].max() > 0:
+        df['Hydro_Gen'] = (df['Hydro'] / df['Hydro'].max()) * hydro_capacity
+    else:
+        df['Hydro_Gen'] = 0
         
     if 'Load' in df.columns:
         df['Load_Actual'] = df['Load'] * load_scaling
     else:
         df['Load_Actual'] = 0
 
-    # Total Renewable Generation
-    df['Total_Renewable_Gen'] = df['Solar_Gen'] + df['Wind_Gen']
+    # Total Renewable Generation (including all sources)
+    df['Total_Renewable_Gen'] = df['Solar_Gen'] + df['Wind_Gen'] + df['Nuclear_Gen'] + df['Geothermal_Gen'] + df['Hydro_Gen']
     
     # Metrics
     total_load = df['Load_Actual'].sum()
@@ -330,8 +369,6 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     # The generate_synthetic_8760_data function creates a 'timestamp' column.
     
     # Base Price (passed as argument or default)
-    # We need to add base_rec_price to the function signature
-    
     # Initialize REC Price column with Base Price
     df['REC_Price_USD'] = base_rec_price
     
@@ -341,47 +378,31 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     if 'Hour' not in df.columns:
         df['Hour'] = df['timestamp'].dt.hour
         
-    # --- Categorization Logic (Priority Based) ---
+    # --- Categorization Logic (Fixed Grid-Based Patterns) ---
     
-    # Cat 6: Critical Scarcity (Top 2% of Net Load)
-    # We'll define this based on the highest Net Load hours
-    # 2% of 8760 is ~175 hours
-    threshold_cat6 = df['Net_Load_MWh'].quantile(0.98)
-    mask_cat6 = df['Net_Load_MWh'] >= threshold_cat6
+    # Cat 6: Critical Scarcity (Winter Evening Peak: 18:00-20:00 Dec-Feb)
+    # These are the hours when grid-wide scarcity is typically highest
+    mask_cat6 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([18, 19, 20]))
     df.loc[mask_cat6, 'REC_Price_USD'] = 20.00
     
     # Cat 5: Winter Morning Scarcity (06:00–09:00 Dec–Feb) -> Hours 6, 7, 8
-    # Months: 12, 1, 2
     mask_cat5 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([6, 7, 8])) & (~mask_cat6)
     df.loc[mask_cat5, 'REC_Price_USD'] = 7.00
     
-    # Cat 4: Evening Peak (17:00–21:00 Most days) -> Hours 17, 18, 19, 20
-    mask_cat4 = (df['Hour'].isin([17, 18, 19, 20])) & (~mask_cat6) & (~mask_cat5)
+    # Cat 4: Evening Peak (17:00–21:00 Most days) -> Hours 17, 18, 19, 20, 21
+    mask_cat4 = (df['Hour'].isin([17, 18, 19, 20, 21])) & (~mask_cat6) & (~mask_cat5)
     df.loc[mask_cat4, 'REC_Price_USD'] = 10.00
     
-    # Cat 3: Shoulder Daylight (07:00–10:00 & 15:00–18:00) -> Hours 7, 8, 9 & 15, 16, 17
-    # Note: Overlaps handled by priority (Cat 5 and Cat 4 take precedence)
-    # Hours: 7, 8, 9, 15, 16, 17
-    # We need to exclude hours already covered by Cat 5 (Winter Mornings 6-8) and Cat 4 (Evening 17-21)
-    # Cat 5 covers 7, 8 in Winter. Cat 3 covers 7, 8 in other months.
-    # Cat 4 covers 17. Cat 3 covers 17? "15:00-18:00" usually means ending 18:00, so 15, 16, 17.
-    # Cat 4 starts at 17:00. Let's assume Cat 4 takes precedence for hour 17.
-    # So Cat 3 effectively:
-    # - Hours 7, 8 (Non-Winter)
-    # - Hour 9 (All Year)
-    # - Hours 15, 16 (All Year)
-    # - Hour 17 (If not Cat 4... but Cat 4 is "Most days", so assume Cat 4 wins)
+    # Cat 3: Shoulder Daylight (07:00–10:00 & 15:00–18:00) -> Hours 7, 8, 9, 15, 16, 17
     mask_cat3_hours = df['Hour'].isin([7, 8, 9, 15, 16])
     mask_cat3 = mask_cat3_hours & (~mask_cat6) & (~mask_cat5) & (~mask_cat4)
     df.loc[mask_cat3, 'REC_Price_USD'] = 3.00
     
     # Cat 1: Super-abundant mid-day (10:00–15:00 Mar–Oct) -> Hours 10, 11, 12, 13, 14
-    # Months: 3-10
     mask_cat1 = (df['Month'].isin(range(3, 11))) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
     df.loc[mask_cat1, 'REC_Price_USD'] = 0.25
     
-    # Cat 2: Typical mid-day (10:00–15:00 Off-peak days/Nov-Feb) -> Hours 10, 11, 12, 13, 14
-    # Months: 1, 2, 11, 12 (Rest of year)
+    # Cat 2: Typical mid-day (10:00–15:00 Nov-Feb) -> Hours 10, 11, 12, 13, 14
     mask_cat2 = (df['Month'].isin([1, 2, 11, 12])) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
     df.loc[mask_cat2, 'REC_Price_USD'] = 1.00
     

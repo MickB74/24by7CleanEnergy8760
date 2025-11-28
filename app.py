@@ -211,11 +211,14 @@ st.markdown("---")
 def reset_values():
     st.session_state.solar_capacity = 0.0
     st.session_state.wind_capacity = 0.0
+    st.session_state.nuclear_capacity = 0.0
+    st.session_state.geothermal_capacity = 0.0
+    st.session_state.hydro_capacity = 0.0
     for b_type in building_types:
         st.session_state[f"load_{b_type}"] = 0
 
 def randomize_scenario():
-    # Randomize Capacities
+    # Randomize Capacities (only Solar and Wind)
     st.session_state.solar_capacity = float(random.randint(10, 500))
     st.session_state.wind_capacity = float(random.randint(10, 500))
     
@@ -250,13 +253,62 @@ with st.sidebar:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # Load Source Selection (outside form for immediate response)
+    st.markdown("### 1. Load Profile")
+    load_source = st.radio("Load Source", ["Estimate Load", "Upload File"], label_visibility="collapsed", key="load_source_radio")
+    
+    # File Uploader (outside form for immediate response)
+    uploaded_load_file = None
+    if load_source == "Upload File":
+        uploaded_load_file = st.file_uploader("Upload Load Data", type=['csv', 'xlsx', 'zip'], key="load_uploader")
+        if uploaded_load_file is not None:
+            try:
+                # Handle ZIP files (exported from this app)
+                if uploaded_load_file.name.endswith('.zip'):
+                    import zipfile
+                    import io
+                    
+                    with zipfile.ZipFile(io.BytesIO(uploaded_load_file.read())) as z:
+                        # Look for a CSV file ending with '_8760_data.csv'
+                        csv_files = [f for f in z.namelist() if f.endswith('_8760_data.csv')]
+                        
+                        if csv_files:
+                            # Use the first matching CSV file
+                            with z.open(csv_files[0]) as f:
+                                uploaded_df = pd.read_csv(f)
+                            st.success(f"✓ ZIP file uploaded: {uploaded_load_file.name} (found {csv_files[0]})")
+                        else:
+                            st.error("❌ ZIP file must contain a file ending with '_8760_data.csv'")
+                            uploaded_load_file = None
+                            uploaded_df = None
+                # Handle CSV files
+                elif uploaded_load_file.name.endswith('.csv'):
+                    uploaded_df = pd.read_csv(uploaded_load_file)
+                # Handle Excel files
+                else:
+                    uploaded_df = pd.read_excel(uploaded_load_file)
+                
+                if uploaded_df is not None:
+                    # Validate the file has required columns
+                    if 'load' in uploaded_df.columns or 'Load' in uploaded_df.columns or 'Load_MWh' in uploaded_df.columns or 'Load_Actual' in uploaded_df.columns:
+                        if not uploaded_load_file.name.endswith('.zip'):
+                            st.success(f"✓ File uploaded: {uploaded_load_file.name} ({len(uploaded_df)} rows)")
+                        # Store in session state for later use
+                        st.session_state.uploaded_load_data = uploaded_df
+                    else:
+                        st.error("❌ File must contain a 'Load', 'load', 'Load_MWh', or 'Load_Actual' column")
+                        uploaded_load_file = None
+            except Exception as e:
+                st.error(f"❌ Error reading file: {str(e)}")
+                uploaded_load_file = None
+        else:
+            st.info("📁 Drag & drop or browse to upload a CSV, Excel, or ZIP file with hourly load data")
+
     with st.form("analysis_config"):
         # Region
         region = st.selectbox("Region", ["ERCOT", "PJM", "CAISO", "MISO", "SPP", "NYISO", "ISO-NE"], key="region_selector")
 
-        st.markdown("### 1. Load Profile")
-        load_source = st.radio("Load Source", ["Estimate Load", "Upload File"], label_visibility="collapsed")
-
+        # Load inputs (only for Estimate Load)
         load_inputs = {}
         if load_source == "Estimate Load":
             # Simplified Load Inputs for UI cleanliness, mapped to existing logic
@@ -270,14 +322,14 @@ with st.sidebar:
                     key=f"load_{b_type}"
                 )
                 load_inputs[b_type] = val
-        else:
-            uploaded_load_file = st.file_uploader("Upload Load CSV", type=['csv', 'xlsx'])
-            # Placeholder for file processing logic integration
 
-        st.markdown("### 2. Renewables")
+        st.markdown("###2. Renewables")
         st.caption("Define capacity (MW) for generation assets.")
         solar_capacity = st.number_input("Solar (MW)", min_value=0.0, step=10.0, key="solar_capacity")
         wind_capacity = st.number_input("Wind (MW)", min_value=0.0, step=10.0, key="wind_capacity")
+        nuclear_capacity = st.number_input("Nuclear (MW)", min_value=0.0, step=10.0, value=0.0, key="nuclear_capacity")
+        geothermal_capacity = st.number_input("Geothermal (MW)", min_value=0.0, step=10.0, value=0.0, key="geothermal_capacity")
+        hydro_capacity = st.number_input("Hydropower (MW)", min_value=0.0, step=10.0, value=0.0, key="hydro_capacity")
 
         st.markdown("### 3. Storage")
         battery_capacity = st.number_input("Battery Capacity (MWh)", min_value=0.0, step=100.0, value=0.0, help="Battery storage capacity for optimized charge/discharge")
@@ -291,32 +343,62 @@ with st.sidebar:
 
         if generate_clicked:
             with st.spinner("Calculating..."):
-                # Logic adapted from previous app.py
-                portfolio_list = []
-                for b_type, val in load_inputs.items():
-                    if val > 0:
-                        portfolio_list.append({'type': b_type, 'annual_mwh': val})
+                # Check if we're using uploaded data or estimated load
+                if load_source == "Upload File" and 'uploaded_load_data' in st.session_state:
+                    # Use uploaded load data
+                    uploaded_df = st.session_state.uploaded_load_data
+                    
+                    # Find the load column (case-insensitive)
+                    load_col = None
+                    for col in uploaded_df.columns:
+                        if col.lower() in ['load', 'load_mwh']:
+                            load_col = col
+                            break
+                    
+                    if load_col:
+                        # Generate base synthetic data structure
+                        df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=[], region=region)
+                        
+                        # Replace the Load column with uploaded data
+                        if len(uploaded_df) == 8760:
+                            df['Load'] = uploaded_df[load_col].values
+                        else:
+                            st.warning(f"⚠️ Uploaded file has {len(uploaded_df)} rows, expected 8760. Using first 8760 rows or padding with zeros.")
+                            if len(uploaded_df) > 8760:
+                                df['Load'] = uploaded_df[load_col].iloc[:8760].values
+                            else:
+                                # Pad with zeros if less than 8760
+                                padded_load = list(uploaded_df[load_col].values) + [0] * (8760 - len(uploaded_df))
+                                df['Load'] = padded_load
+                    else:
+                        st.error("❌ Could not find load column in uploaded file")
+                        df = None
+                else:
+                    # Use estimated load from building types
+                    portfolio_list = []
+                    for b_type, val in load_inputs.items():
+                        if val > 0:
+                            portfolio_list.append({'type': b_type, 'annual_mwh': val})
+                    
+                    # Generate Data
+                    df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region)
                 
-                # Default if empty
-                if not portfolio_list and load_source == "Estimate Load":
-                    # Add a dummy load if nothing selected to avoid crash, or handle gracefully
-                    pass 
-
-                # Generate Data
-                df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region)
-                
-                # Calculate Metrics
-                results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity)
-                
-                st.session_state.portfolio_data = {
-                    "results": results,
-                    "df": df_result,
-                    "region": region,
-                    "solar_capacity": solar_capacity,
-                    "wind_capacity": wind_capacity
-                }
-                st.session_state.analysis_complete = True
-                st.rerun()
+                if df is not None:
+                    # Calculate Metrics
+                    results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity)
+                    
+                    st.session_state.portfolio_data = {
+                        "results": results,
+                        "df": df_result,
+                        "region": region,
+                        "solar_capacity": solar_capacity,
+                        "wind_capacity": wind_capacity,
+                        "nuclear_capacity": nuclear_capacity,
+                        "geothermal_capacity": geothermal_capacity,
+                        "hydro_capacity": hydro_capacity
+                    }
+                    st.session_state.analysis_complete = True
+                    st.rerun()
 
 
 # Results Section (Main Area)
@@ -366,12 +448,61 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             value=f"{results['total_renewable_gen']:,.0f} MWh",
             help="Total renewable energy generated annually."
         )
+        # Add breakdown by source with capacity factors
+        breakdown_parts = []
+        
+        # Helper function to calculate capacity factor
+        def calc_cf(generation_mwh, capacity_mw):
+            if capacity_mw > 0:
+                return (generation_mwh / (capacity_mw * 8760)) * 100
+            return 0
+        
+        if df['Solar_Gen'].sum() > 0:
+            solar_cf = calc_cf(df['Solar_Gen'].sum(), data['solar_capacity'])
+            breakdown_parts.append(f"Solar: {df['Solar_Gen'].sum():,.0f} MWh ({solar_cf:.1f}% CF)")
+        if df['Wind_Gen'].sum() > 0:
+            wind_cf = calc_cf(df['Wind_Gen'].sum(), data['wind_capacity'])
+            breakdown_parts.append(f"Wind: {df['Wind_Gen'].sum():,.0f} MWh ({wind_cf:.1f}% CF)")
+        if 'Nuclear_Gen' in df.columns and df['Nuclear_Gen'].sum() > 0:
+            nuclear_cf = calc_cf(df['Nuclear_Gen'].sum(), data['nuclear_capacity'])
+            breakdown_parts.append(f"Nuclear: {df['Nuclear_Gen'].sum():,.0f} MWh ({nuclear_cf:.1f}% CF)")
+        if 'Geothermal_Gen' in df.columns and df['Geothermal_Gen'].sum() > 0:
+            geo_cf = calc_cf(df['Geothermal_Gen'].sum(), data['geothermal_capacity'])
+            breakdown_parts.append(f"Geothermal: {df['Geothermal_Gen'].sum():,.0f} MWh ({geo_cf:.1f}% CF)")
+        if 'Hydro_Gen' in df.columns and df['Hydro_Gen'].sum() > 0:
+            hydro_cf = calc_cf(df['Hydro_Gen'].sum(), data['hydro_capacity'])
+            breakdown_parts.append(f"Hydro: {df['Hydro_Gen'].sum():,.0f} MWh ({hydro_cf:.1f}% CF)")
+        
+        if breakdown_parts:
+            st.caption(" • ".join(breakdown_parts))
+            
     with m_load:
         st.metric(
             label="Total Load",
             value=f"{results['total_annual_load']:,.0f} MWh",
             help="Total annual electricity consumption."
         )
+        # Add breakdown by building type with Load Factor
+        load_breakdown_parts = []
+        for col in df.columns:
+            if col.startswith('Load_') and col != 'Load_Actual':
+                load_sum = df[col].sum()
+                if load_sum > 0:
+                    # Extract building type from column name
+                    building_type = col.replace('Load_', '').replace('_', ' ')
+                    
+                    # Calculate Load Factor: Avg Load / Peak Load
+                    # Avg Load = Total MWh / 8760
+                    # Peak Load = Max MW in the column
+                    peak_load = df[col].max()
+                    if peak_load > 0:
+                        load_factor = (load_sum / (peak_load * 8760)) * 100
+                        load_breakdown_parts.append(f"{building_type}: {load_sum:,.0f} MWh ({load_factor:.1f}% LF)")
+                    else:
+                        load_breakdown_parts.append(f"{building_type}: {load_sum:,.0f} MWh")
+        
+        if load_breakdown_parts:
+            st.caption(" • ".join(load_breakdown_parts))
             
     # Second Metrics Row
     m5, m6 = st.columns(2)
@@ -422,9 +553,9 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         st.caption(f"Avg: ${avg_revenue_per_mwh:.2f}/MWh")
     with f3:
         st.metric(
-            label="Net REC Cost",
+            label="Net Profit/(Loss)",
             value=format_currency(results['net_rec_cost']),
-            help="Total Cost - Total Revenue. Positive means net cost, negative means net profit."
+            help="Total Revenue + Total Cost. Positive means net profit, negative means net loss."
         )
             
     st.markdown("---")
@@ -629,16 +760,30 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     # 1. Generation Dominance
     total_solar = df['Solar_Gen'].sum()
     total_wind = df['Wind_Gen'].sum()
-    total_gen = total_solar + total_wind
+    total_nuclear = df['Nuclear_Gen'].sum() if 'Nuclear_Gen' in df.columns else 0
+    total_geothermal = df['Geothermal_Gen'].sum() if 'Geothermal_Gen' in df.columns else 0
+    total_hydro = df['Hydro_Gen'].sum() if 'Hydro_Gen' in df.columns else 0
+    total_gen = total_solar + total_wind + total_nuclear + total_geothermal + total_hydro
     
     if total_gen > 0:
-        solar_share = total_solar / total_gen
-        if solar_share > 0.6:
-            insights.append(f"**Solar-dominant profile:** {solar_share:.0%} of generation comes from solar assets.")
-        elif solar_share < 0.4:
-            insights.append(f"**Wind-dominant profile:** {(1-solar_share):.0%} of generation comes from wind assets.")
+        # Find dominant source
+        sources = {
+            'Solar': total_solar,
+            'Wind': total_wind,
+            'Nuclear': total_nuclear,
+            'Geothermal': total_geothermal,
+            'Hydropower': total_hydro
+        }
+        dominant_source = max(sources, key=sources.get)
+        dominant_share = sources[dominant_source] / total_gen
+        
+        if dominant_share > 0.5:
+            insights.append(f"**{dominant_source}-dominant profile:** {dominant_share:.0%} of generation comes from {dominant_source} assets.")
         else:
-            insights.append(f"**Balanced profile:** Mix of Solar ({solar_share:.0%}) and Wind ({(1-solar_share):.0%}).")
+            # Show breakdown of all non-zero sources
+            active_sources = {k: v for k, v in sources.items() if v > 0}
+            breakdown = ", ".join([f"{k} ({v/total_gen:.0%})" for k, v in active_sources.items()])
+            insights.append(f"**Diversified profile:** {breakdown}")
             
     # 2. Deficit Hours (Time of day with lowest CFE)
     # heatmap_agg is already calculated: ['MonthNum', 'Month', 'Hour', 'Hourly_CFE_Ratio']
