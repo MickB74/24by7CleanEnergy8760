@@ -295,22 +295,26 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         df['Total_Renewable_Gen_With_Battery'] = df['Total_Renewable_Gen'] + df['Battery_Discharge'] - df['Battery_Charge']
         # Use battery-adjusted generation for CFE calculation
         df['Hourly_CFE_MWh'] = np.minimum(df['Total_Renewable_Gen_With_Battery'], df['Load_Actual'])
+        
+        # Define Effective Generation for metrics
+        df['Effective_Gen'] = df['Total_Renewable_Gen_With_Battery']
     else:
         # No battery
         df['Hourly_CFE_MWh'] = np.minimum(df['Total_Renewable_Gen'], df['Load_Actual'])
+        df['Effective_Gen'] = df['Total_Renewable_Gen']
     
     df['Hourly_CFE_Ratio'] = np.where(df['Load_Actual'] > 0, df['Hourly_CFE_MWh'] / df['Load_Actual'], 1.0)
     
     # Uncapped Ratio for Heatmap Toggle
-    df['Hourly_Renewable_Ratio'] = np.where(df['Load_Actual'] > 0, df['Total_Renewable_Gen'] / df['Load_Actual'], 0.0)
+    df['Hourly_Renewable_Ratio'] = np.where(df['Load_Actual'] > 0, df['Effective_Gen'] / df['Load_Actual'], 0.0)
     
     # Calculate Metrics
     total_annual_load = df['Load_Actual'].sum()
-    total_renewable_gen = df['Total_Renewable_Gen'].sum()
+    total_renewable_gen = df['Effective_Gen'].sum()
     
     # MW Match Productivity
     # Sum of min(Gen, Load) / Total Installed MW
-    matched_energy_mwh = df[['Total_Renewable_Gen', 'Load_Actual']].min(axis=1).sum()
+    matched_energy_mwh = df[['Effective_Gen', 'Load_Actual']].min(axis=1).sum()
     
     # CFE Score (Volumetric: Total Matched / Total Load)
     # "Add up both and then do the %"
@@ -319,14 +323,14 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         cfe_score = (matched_energy_mwh / total_annual_load) * 100
     
     # Loss of Green Hour (Hours where Gen < Load)
-    loss_of_green_hours = df[df['Total_Renewable_Gen'] < df['Load_Actual']].shape[0]
+    loss_of_green_hours = df[df['Effective_Gen'] < df['Load_Actual']].shape[0]
     loss_of_green_hour_percent = (loss_of_green_hours / 8760) * 100
     
     # Overgeneration (Gen - Load, only positive values)
-    overgeneration = (df['Total_Renewable_Gen'] - df['Load_Actual']).clip(lower=0).sum()
+    overgeneration = (df['Effective_Gen'] - df['Load_Actual']).clip(lower=0).sum()
     
     # Grid Consumption (Load - Gen, only positive values)
-    grid_consumption = (df['Load_Actual'] - df['Total_Renewable_Gen']).clip(lower=0).sum()
+    grid_consumption = (df['Load_Actual'] - df['Effective_Gen']).clip(lower=0).sum()
     
     # Emissions
     # Get eGRID factor for the region
@@ -358,10 +362,10 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     # Positive = Deficit (Need to buy RECs)
     # Negative = Surplus (Can sell RECs)
     # Use battery-adjusted generation if battery is present
-    if battery_capacity_mwh > 0:
-        df['Net_Load_MWh'] = df['Load_Actual'] - df['Total_Renewable_Gen_With_Battery']
-    else:
-        df['Net_Load_MWh'] = df['Load_Actual'] - df['Total_Renewable_Gen']
+    # Calculate Hourly Net Load (Load - Gen)
+    # Positive = Deficit (Need to buy RECs)
+    # Negative = Surplus (Can sell RECs)
+    df['Net_Load_MWh'] = df['Load_Actual'] - df['Effective_Gen']
     
     # Define Pricing Categories
     # We need Month and Hour
