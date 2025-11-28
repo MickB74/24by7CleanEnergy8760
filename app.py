@@ -1,9 +1,12 @@
 import streamlit as st
 import pandas as pd
-import utils
-import time
-import random
+import numpy as np
 import altair as alt
+import random
+import time
+import utils
+import importlib
+importlib.reload(utils)
 
 # Page Config
 st.set_page_config(
