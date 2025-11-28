@@ -159,34 +159,28 @@ with st.sidebar:
             # Simplified Load Inputs for UI cleanliness, mapped to existing logic
             st.caption("Define annual consumption for building types.")
             
-            # Use columns for compact inputs
-            c1, c2 = st.columns(2)
             for i, b_type in enumerate(building_types):
-                with (c1 if i % 2 == 0 else c2):
-                    val = st.number_input(
-                        f"{b_type} (MWh)",
-                        min_value=0,
-                        step=50000,
-                        key=f"load_{b_type}"
-                    )
-                    load_inputs[b_type] = val
+                val = st.number_input(
+                    f"{b_type} (MWh)",
+                    min_value=0,
+                    step=50000,
+                    key=f"load_{b_type}"
+                )
+                load_inputs[b_type] = val
         else:
             uploaded_load_file = st.file_uploader("Upload Load CSV", type=['csv', 'xlsx'])
             # Placeholder for file processing logic integration
 
         st.markdown("### 2. Renewables")
         st.caption("Define capacity (MW) for generation assets.")
-        rc1, rc2 = st.columns(2)
-        with rc1:
-            solar_capacity = st.number_input("Solar (MW)", min_value=0.0, step=10.0, key="solar_capacity")
-        with rc2:
-            wind_capacity = st.number_input("Wind (MW)", min_value=0.0, step=10.0, key="wind_capacity")
+        solar_capacity = st.number_input("Solar (MW)", min_value=0.0, step=10.0, key="solar_capacity")
+        wind_capacity = st.number_input("Wind (MW)", min_value=0.0, step=10.0, key="wind_capacity")
 
         st.markdown("### 3. Storage")
         battery_capacity = st.number_input("Battery Capacity (MWh)", min_value=0.0, step=100.0, value=0.0, help="Battery storage capacity for optimized charge/discharge")
 
         st.markdown("### 4. Financials")
-        base_rec_price = st.number_input("Base REC Price ($/MWh)", value=0.50, step=0.10, min_value=0.0)
+        base_rec_price = st.number_input("Base REC Price ($/MWh)", value=8.00, step=0.50, min_value=0.0, help="Default based on Green-e certified national REC market prices")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -395,14 +389,19 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     # Mini Heatmap (Month x Hour)
     st.subheader("Hourly Match Heatmap")
     
+    heatmap_mode = st.radio("Heatmap Mode", ["Capped at 100%", "Total Renewable Generation"], horizontal=True, label_visibility="collapsed")
+    
     # Aggregate data for 12x24 grid
     heatmap_data = df.copy()
     heatmap_data['Month'] = heatmap_data['timestamp'].dt.month_name()
     heatmap_data['MonthNum'] = heatmap_data['timestamp'].dt.month
     heatmap_data['Hour'] = heatmap_data['timestamp'].dt.hour
     
+    # Determine column to use
+    metric_col = 'Hourly_CFE_Ratio' if heatmap_mode == "Capped at 100%" else 'Hourly_Renewable_Ratio'
+    
     # Group by Month and Hour
-    heatmap_agg = heatmap_data.groupby(['MonthNum', 'Month', 'Hour'])['Hourly_CFE_Ratio'].mean().reset_index()
+    heatmap_agg = heatmap_data.groupby(['MonthNum', 'Month', 'Hour'])[metric_col].mean().reset_index()
     
     # Sort months
     months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -410,11 +409,11 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     heatmap = alt.Chart(heatmap_agg).mark_rect().encode(
             x=alt.X('Hour:O', title='Hour of Day'),
             y=alt.Y('Month:N', sort=months, title=None),
-            color=alt.Color('Hourly_CFE_Ratio', scale=alt.Scale(scheme='greys', domain=[0, 1]), title='CFE %'),
+            color=alt.Color(metric_col, scale=alt.Scale(scheme='greys', domain=[0, 1] if heatmap_mode == "Capped at 100%" else [0, 2]), title='CFE %' if heatmap_mode == "Capped at 100%" else 'Gen %'),
             tooltip=[
                 alt.Tooltip('Month', title='Month'),
                 alt.Tooltip('Hour', title='Hour'),
-                alt.Tooltip('Hourly_CFE_Ratio', title='Avg CFE %', format='.1%')
+                alt.Tooltip(metric_col, title='Avg Match %', format='.1%')
             ]
     ).properties(
             height=300
@@ -448,6 +447,78 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     )
     st.altair_chart(rec_heatmap, use_container_width=True)
     
+    # Net REC Financial Position Heatmap
+    st.subheader("Net REC Financial Position Heatmap")
+    st.caption("Financial flow from selling excess RECs (Revenue) and buying needed RECs (Cost). Green = Net Revenue, Red = Net Cost.")
+    
+    # Calculate Net Flow
+    fin_heatmap_data = df.copy()
+    fin_heatmap_data['Net_REC_Flow'] = fin_heatmap_data['REC_Cost'] + fin_heatmap_data['REC_Revenue']
+    fin_heatmap_data['Month'] = fin_heatmap_data['timestamp'].dt.month_name()
+    fin_heatmap_data['MonthNum'] = fin_heatmap_data['timestamp'].dt.month
+    fin_heatmap_data['Hour'] = fin_heatmap_data['timestamp'].dt.hour
+    
+    # Group by Month and Hour
+    fin_heatmap_agg = fin_heatmap_data.groupby(['MonthNum', 'Month', 'Hour'])['Net_REC_Flow'].mean().reset_index()
+    
+    # Create heatmap
+    # We need a diverging color scale.
+    # Find max abs value to center the domain
+    max_val = fin_heatmap_agg['Net_REC_Flow'].abs().max()
+    
+    fin_heatmap = alt.Chart(fin_heatmap_agg).mark_rect().encode(
+            x=alt.X('Hour:O', title='Hour of Day'),
+            y=alt.Y('Month:N', sort=months, title=None),
+            color=alt.Color('Net_REC_Flow', scale=alt.Scale(scheme='redyellowgreen', domain=[-max_val, max_val]), title='Avg Net $'),
+            tooltip=[
+                alt.Tooltip('Month', title='Month'),
+                alt.Tooltip('Hour', title='Hour'),
+                alt.Tooltip('Net_REC_Flow', title='Avg Net Flow', format='$.2f')
+            ]
+    ).properties(
+            height=300
+    )
+    st.altair_chart(fin_heatmap, use_container_width=True)
+    
+    with st.expander("Show Example Calculations from Data"):
+        st.write("Here are two actual hours from your simulation (randomly selected):")
+        
+        # Find a Net Cost Example (Deficit)
+        cost_examples = df[df['Net_Load_MWh'] > 0]
+        if not cost_examples.empty:
+            ex_cost = cost_examples.sample(1).iloc[0]
+            cost_calc = ex_cost['Net_Load_MWh'] * ex_cost['REC_Price_USD']
+            st.markdown(f"""
+            **Example 1: Buying RECs (Net Cost)**
+            - **Time**: {ex_cost['timestamp'].strftime('%B %d, %H:00')}
+            - **Load**: {ex_cost['Load_Actual']:.1f} MWh
+            - **Generation**: {ex_cost['Total_Renewable_Gen']:.1f} MWh
+            - **Shortfall**: {ex_cost['Net_Load_MWh']:.1f} MWh
+            - **REC Price**: \\${ex_cost['REC_Price_USD']:.2f}/MWh
+            - **Calculation**: {ex_cost['Net_Load_MWh']:.1f} MWh × \\${ex_cost['REC_Price_USD']:.2f} = **-\\${abs(ex_cost['REC_Cost']):.2f}**
+            """)
+        else:
+            st.info("No hours with Net Cost found (100% coverage).")
+            
+        st.markdown("---")
+        
+        # Find a Net Revenue Example (Surplus)
+        rev_examples = df[df['Net_Load_MWh'] < 0]
+        if not rev_examples.empty:
+            ex_rev = rev_examples.sample(1).iloc[0]
+            rev_calc = abs(ex_rev['Net_Load_MWh']) * ex_rev['REC_Price_USD']
+            st.markdown(f"""
+            **Example 2: Selling RECs (Net Revenue)**
+            - **Time**: {ex_rev['timestamp'].strftime('%B %d, %H:00')}
+            - **Load**: {ex_rev['Load_Actual']:.1f} MWh
+            - **Generation**: {ex_rev['Total_Renewable_Gen']:.1f} MWh
+            - **Excess**: {abs(ex_rev['Net_Load_MWh']):.1f} MWh
+            - **REC Price**: \\${ex_rev['REC_Price_USD']:.2f}/MWh
+            - **Calculation**: {abs(ex_rev['Net_Load_MWh']):.1f} MWh × \\${ex_rev['REC_Price_USD']:.2f} = **+\\${ex_rev['REC_Revenue']:.2f}**
+            """)
+        else:
+            st.info("No hours with Net Revenue found (No overgeneration).")
+
     # Auto-Insights
     # Auto-Insights Logic
     insights = []

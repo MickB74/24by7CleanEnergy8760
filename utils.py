@@ -262,6 +262,9 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     
     df['Hourly_CFE_Ratio'] = np.where(df['Load_Actual'] > 0, df['Hourly_CFE_MWh'] / df['Load_Actual'], 1.0)
     
+    # Uncapped Ratio for Heatmap Toggle
+    df['Hourly_Renewable_Ratio'] = np.where(df['Load_Actual'] > 0, df['Total_Renewable_Gen'] / df['Load_Actual'], 0.0)
+    
     # Calculate Metrics
     total_annual_load = df['Load_Actual'].sum()
     total_renewable_gen = df['Total_Renewable_Gen'].sum()
