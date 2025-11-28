@@ -4,10 +4,15 @@ import numpy as np
 import altair as alt
 import random
 import time
-import utils
-import importlib
 import os
-importlib.reload(utils)
+try:
+    import utils
+except Exception as e:
+    st.error(f"CRITICAL ERROR importing utils: {e}")
+    st.stop()
+
+# import importlib
+# importlib.reload(utils) # Streamlit handles reloading
 
 # Page Config
 st.set_page_config(
