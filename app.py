@@ -292,14 +292,21 @@ with st.sidebar:
                     uploaded_df = pd.read_excel(uploaded_load_file)
                 
                 if uploaded_df is not None:
+                    # Clean column names (strip whitespace)
+                    uploaded_df.columns = uploaded_df.columns.str.strip()
+                    
                     # Validate the file has required columns
-                    if 'load' in uploaded_df.columns or 'Load' in uploaded_df.columns or 'Load_MWh' in uploaded_df.columns or 'Load_Actual' in uploaded_df.columns:
+                    valid_load_cols = ['load', 'Load', 'Load_MWh', 'Load_Actual']
+                    has_load_col = any(col in uploaded_df.columns for col in valid_load_cols)
+                    
+                    if has_load_col:
                         if not uploaded_load_file.name.endswith('.zip'):
                             st.success(f"✓ File uploaded: {uploaded_load_file.name} ({len(uploaded_df)} rows)")
                         # Store in session state for later use
                         st.session_state.uploaded_load_data = uploaded_df
                     else:
-                        st.error("❌ File must contain a 'Load', 'load', 'Load_MWh', or 'Load_Actual' column")
+                        st.error(f"❌ Could not find load column in uploaded file. Found columns: {list(uploaded_df.columns)}")
+                        st.info("Expected one of: 'Load', 'load', 'Load_MWh', 'Load_Actual'")
                         uploaded_load_file = None
             except Exception as e:
                 st.error(f"❌ Error reading file: {str(e)}")
