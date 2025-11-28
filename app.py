@@ -502,6 +502,9 @@ with st.sidebar:
                     # Calculate Metrics
                     results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions, emissions_logic=emissions_logic)
                     
+                    # Debug: Show which emissions logic is being used
+                    st.toast(f"Using {emissions_source} emissions data", icon="📊")
+                    
                     st.session_state.portfolio_data = {
                         "results": results,
                         "df": df_result,
@@ -510,7 +513,9 @@ with st.sidebar:
                         "wind_capacity": wind_capacity,
                         "nuclear_capacity": nuclear_capacity,
                         "geothermal_capacity": geothermal_capacity,
-                        "hydro_capacity": hydro_capacity
+                        "hydro_capacity": hydro_capacity,
+                        "emissions_logic": emissions_logic,
+                        "emissions_source": emissions_source
                     }
                     st.session_state.analysis_complete = True
                     st.rerun()
