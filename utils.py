@@ -449,7 +449,7 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     
     return results, df
 
-def create_zip_export(results, df, portfolio_name, region):
+def create_zip_export(results, df, portfolio_name, region, inputs=None):
     """
     Creates a zip file containing the JSON summary and the CSV dataset.
     """
@@ -457,6 +457,7 @@ def create_zip_export(results, df, portfolio_name, region):
     summary_dict = {
         "portfolio_name": portfolio_name,
         "region": region,
+        "inputs": inputs if inputs else {},
         "results": results,
         "metadata": {
             "columns": list(df.columns),

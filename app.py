@@ -231,6 +231,74 @@ def randomize_scenario():
 
 # Sidebar Inputs
 with st.sidebar:
+    st.subheader("Restore Session")
+    restore_file = st.file_uploader("Upload Exported ZIP", type=['zip'], key="restore_uploader")
+    if restore_file is not None:
+        try:
+            import zipfile
+            import io
+            import json
+            
+            with zipfile.ZipFile(io.BytesIO(restore_file.read())) as z:
+                # Find JSON and CSV
+                json_files = [f for f in z.namelist() if f.endswith('_summary.json')]
+                csv_files = [f for f in z.namelist() if f.endswith('_8760_data.csv')]
+                
+                if json_files and csv_files:
+                    # 1. Restore Inputs from JSON
+                    with z.open(json_files[0]) as f:
+                        summary_data = json.load(f)
+                        inputs = summary_data.get('inputs', {})
+                        
+                        if inputs:
+                            # Update session state with restored inputs
+                            st.session_state.solar_capacity = inputs.get('solar_capacity', 0.0)
+                            st.session_state.wind_capacity = inputs.get('wind_capacity', 0.0)
+                            st.session_state.nuclear_capacity = inputs.get('nuclear_capacity', 0.0)
+                            st.session_state.geothermal_capacity = inputs.get('geothermal_capacity', 0.0)
+                            st.session_state.hydro_capacity = inputs.get('hydro_capacity', 0.0)
+                            st.session_state.battery_capacity = inputs.get('battery_capacity', 0.0)
+                            st.session_state.region_selector = inputs.get('region', "ERCOT")
+                            
+                            # Restore loads
+                            for b_type in building_types:
+                                load_key = f"load_{b_type}"
+                                if load_key in inputs:
+                                    st.session_state[load_key] = inputs[load_key]
+                            
+                            st.success("✓ Settings restored")
+                        else:
+                            st.warning("⚠ No input settings found in JSON (older export?)")
+
+                    # 2. Restore Data from CSV
+                    with z.open(csv_files[0]) as f:
+                        restored_df = pd.read_csv(f)
+                        # Clean columns
+                        restored_df.columns = restored_df.columns.str.strip()
+                        
+                        # Reconstruct results dict if needed, or use the one from JSON
+                        # For now, let's use the one from JSON if available
+                        restored_results = summary_data.get('results', {})
+                        
+                        st.session_state.portfolio_data = {
+                            "results": restored_results,
+                            "df": restored_df,
+                            "region": st.session_state.region_selector,
+                            "solar_capacity": st.session_state.solar_capacity,
+                            "wind_capacity": st.session_state.wind_capacity,
+                            "nuclear_capacity": st.session_state.nuclear_capacity,
+                            "geothermal_capacity": st.session_state.geothermal_capacity,
+                            "hydro_capacity": st.session_state.hydro_capacity
+                        }
+                        st.session_state.analysis_complete = True
+                        st.success("✓ Data restored! Rerunning...")
+                        st.rerun()
+                else:
+                    st.error("❌ Invalid ZIP format. Must contain _summary.json and _8760_data.csv")
+        except Exception as e:
+            st.error(f"❌ Error restoring session: {str(e)}")
+            
+    st.markdown("---")
     st.subheader("Configuration")
 
     # Control Buttons with Custom Colors
@@ -818,7 +886,22 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     
     # Export
     st.markdown("<br>", unsafe_allow_html=True)
-    zip_data = utils.create_zip_export(results, df, "Eighty760_Analysis", region)
+    
+    # Collect inputs for export
+    export_inputs = {
+        "solar_capacity": st.session_state.get('solar_capacity', 0.0),
+        "wind_capacity": st.session_state.get('wind_capacity', 0.0),
+        "nuclear_capacity": st.session_state.get('nuclear_capacity', 0.0),
+        "geothermal_capacity": st.session_state.get('geothermal_capacity', 0.0),
+        "hydro_capacity": st.session_state.get('hydro_capacity', 0.0),
+        "battery_capacity": st.session_state.get('battery_capacity', 0.0),
+        "region": region
+    }
+    # Add building loads
+    for b_type in building_types:
+        export_inputs[f"load_{b_type}"] = st.session_state.get(f"load_{b_type}", 0.0)
+        
+    zip_data = utils.create_zip_export(results, df, "Eighty760_Analysis", region, inputs=export_inputs)
     st.download_button(
             label="Download ZIP", # Label per spec, but functionality is ZIP for now
             data=zip_data,
