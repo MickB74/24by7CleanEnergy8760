@@ -475,7 +475,7 @@ with st.sidebar:
                             portfolio_list.append({'type': b_type, 'annual_mwh': val})
                     
                     # Generate Data
-                    df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region)
+                    df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region, seed=42)
                 
                 if df is not None:
                     # Load Hourly Emissions Data if available

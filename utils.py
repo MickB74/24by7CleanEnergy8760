@@ -99,13 +99,18 @@ REGIONAL_PARAMS = {
     }
 }
 
-def generate_synthetic_8760_data(year=2023, building_portfolio=None, region="National Average"):
+def generate_synthetic_8760_data(year=2023, building_portfolio=None, region="National Average", seed=42):
     """
     Generates synthetic 8760 hourly data for Solar, Wind, and Load.
     building_portfolio: List of dicts [{'type': 'Office', 'annual_mwh': 1000}, ...]
     region: String, one of the keys in REGIONAL_PARAMS
+    seed: Random seed for reproducibility
     Returns a DataFrame with datetime index and columns: 'Solar', 'Wind', 'Load' (Total), plus individual building loads.
     """
+    # Set seed for reproducibility
+    np.random.seed(seed)
+    random.seed(seed)
+    
     dates = pd.date_range(start=f'{year}-01-01', end=f'{year}-12-31 23:00:00', freq='h')
     
     params = REGIONAL_PARAMS.get(region, REGIONAL_PARAMS["National Average"])
