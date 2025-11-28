@@ -805,6 +805,11 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             y=alt.Y('Month:N', sort=months, title=None),
             color=alt.Color('Net_REC_Flow', scale=alt.Scale(scheme='redyellowgreen', domain=[-max_val, max_val]), title='Avg Net $'),
             tooltip=[
+                alt.Tooltip('Month', title='Month'),
+                alt.Tooltip('Hour', title='Hour'),
+                alt.Tooltip('Net_REC_Flow', title='Avg Net Flow', format='$.2f')
+            ]
+    ).properties(
             height=300
     )
     st.altair_chart(fin_heatmap, use_container_width=True)
