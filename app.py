@@ -15,7 +15,7 @@ st.set_page_config(
 
 # Initialize dark mode in session state BEFORE using it
 if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = True
+    st.session_state.dark_mode = False
 
 # Inject Custom CSS based on theme
 if st.session_state.dark_mode:
@@ -225,22 +225,28 @@ def randomize_scenario():
 
 # Sidebar Inputs
 with st.sidebar:
-    # Theme Toggle
-    theme_icon = "☀️" if st.session_state.dark_mode else "🌙"
-    theme_label = "Light Mode" if st.session_state.dark_mode else "Dark Mode"
-    if st.button(f"{theme_icon} {theme_label}", use_container_width=True):
-        st.session_state.dark_mode = not st.session_state.dark_mode
-        st.rerun()
-    
-    st.markdown("---")
     st.subheader("Configuration")
 
-    # Control Buttons
+    # Control Buttons with Custom Colors
+    st.markdown("""
+        <style>
+        /* Random and Reset All buttons */
+        button[key="random_btn"], button[key="reset_btn"] {
+            background-color: #285477 !important;
+            color: white !important;
+            border: none !important;
+        }
+        button[key="random_btn"]:hover, button[key="reset_btn"]:hover {
+            background-color: #1e3f5a !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     cb1, cb2 = st.columns(2)
     with cb1:
-        st.button("🎲 Randomize", on_click=randomize_scenario, type="secondary", use_container_width=True)
+        st.button("Random", on_click=randomize_scenario, use_container_width=True, key="random_btn")
     with cb2:
-        st.button("Reset All", on_click=reset_values, type="secondary", use_container_width=True)
+        st.button("Reset All", on_click=reset_values, use_container_width=True, key="reset_btn")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
