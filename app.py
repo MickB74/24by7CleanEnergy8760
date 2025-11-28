@@ -232,7 +232,6 @@ def randomize_scenario():
 # Sidebar Inputs
 with st.sidebar:
     st.subheader("Restore Session")
-    st.subheader("Restore Session")
     
     def restore_session_callback():
         uploaded_file = st.session_state.restore_uploader
