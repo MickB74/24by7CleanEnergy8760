@@ -279,18 +279,22 @@ with st.sidebar:
                             # Clean columns
                             restored_df.columns = restored_df.columns.str.strip()
                             
+                            # Convert timestamp to datetime
+                            if 'timestamp' in restored_df.columns:
+                                restored_df['timestamp'] = pd.to_datetime(restored_df['timestamp'])
+                                
                             # Reconstruct results dict if needed, or use the one from JSON
                             restored_results = summary_data.get('results', {})
                             
                             st.session_state.portfolio_data = {
                                 "results": restored_results,
                                 "df": restored_df,
-                                "region": st.session_state.region_selector,
-                                "solar_capacity": st.session_state.solar_capacity,
-                                "wind_capacity": st.session_state.wind_capacity,
-                                "nuclear_capacity": st.session_state.nuclear_capacity,
-                                "geothermal_capacity": st.session_state.geothermal_capacity,
-                                "hydro_capacity": st.session_state.hydro_capacity
+                                "region": st.session_state.get('region_selector', "ERCOT"),
+                                "solar_capacity": st.session_state.get('solar_capacity', 0.0),
+                                "wind_capacity": st.session_state.get('wind_capacity', 0.0),
+                                "nuclear_capacity": st.session_state.get('nuclear_capacity', 0.0),
+                                "geothermal_capacity": st.session_state.get('geothermal_capacity', 0.0),
+                                "hydro_capacity": st.session_state.get('hydro_capacity', 0.0)
                             }
                             st.session_state.analysis_complete = True
                             st.toast("✓ Data restored!", icon="✅")
