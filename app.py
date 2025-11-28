@@ -483,8 +483,14 @@ with st.sidebar:
                                 # Convert g/kWh to lb/MWh
                                 # 1 g/kWh = 1 kg/MWh
                                 # 1 kg = 2.20462 lb
-                                hourly_emissions = em_df['carbon_intensity_g_kwh'] * 2.20462
-                                st.toast(f"Loaded hourly emissions from {emissions_file}", icon="🌍")
+                                raw_emissions = em_df['carbon_intensity_g_kwh'] * 2.20462
+                                
+                                # Align with df length
+                                if len(raw_emissions) >= len(df):
+                                    hourly_emissions = raw_emissions.iloc[:len(df)]
+                                    st.toast(f"Loaded hourly emissions from {emissions_file} (aligned to {len(df)} hours)", icon="🌍")
+                                else:
+                                    st.warning(f"⚠️ Emissions file has {len(raw_emissions)} rows, but simulation has {len(df)}. Using eGRID default.")
                     except Exception as e:
                         st.warning(f"Could not load emissions file: {e}")
 
