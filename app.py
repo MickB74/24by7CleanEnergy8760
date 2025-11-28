@@ -13,82 +13,171 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inject Custom CSS
-st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@700&display=swap');
+# Initialize dark mode in session state BEFORE using it
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = True
 
-        /* Global Typography */
-        html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif;
-            color: #1A1A1A;
-        }
-        h1, h2, h3 {
-            font-weight: 700;
-            color: #000000;
-        }
-        
-        /* Layout Adjustments */
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-            max-width: 1440px;
-        }
+# Inject Custom CSS based on theme
+if st.session_state.dark_mode:
+    # Dark Mode CSS
+    st.markdown("""
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@700&display=swap');
 
-        /* Metric Tiles */
-        .stMetric {
-            background-color: #FFFFFF;
-            padding: 0px;
-        }
-        [data-testid="stMetricValue"] {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 3rem !important;
-            font-weight: 700;
-            color: #285477;
-        }
-        [data-testid="stMetricLabel"] {
-            font-size: 1.1rem !important;
-            color: #666666;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
+            /* Dark Mode - Override everything */
+            .stApp {
+                background-color: #0E1117 !important;
+            }
+            .main .block-container {
+                background-color: #0E1117 !important;
+            }
+            section[data-testid="stSidebar"] {
+                background-color: #262730 !important;
+            }
+            section[data-testid="stSidebar"] > div {
+                background-color: #262730 !important;
+            }
+            
+            /* Text Colors */
+            .stApp, .stApp p, .stApp label, .stApp span, .stApp div {
+                color: #FAFAFA !important;
+            }
+            h1, h2, h3, h4, h5, h6 {
+                color: #FAFAFA !important;
+                font-weight: 700;
+            }
+            
+            /* Global Typography */
+            html, body, [class*="css"] {
+                font-family: 'Inter', sans-serif;
+            }
+            
+            /* Layout Adjustments */
+            .block-container {
+                padding-top: 2rem;
+                padding-bottom: 2rem;
+                max-width: 1440px;
+            }
 
+            /* Metric Tiles */
+            .stMetric {
+                background-color: rgba(255, 255, 255, 0.05) !important;
+                padding: 1rem;
+                border-radius: 8px;
+            }
+            [data-testid="stMetricValue"] {
+                font-family: 'IBM Plex Mono', monospace;
+                font-size: 3rem !important;
+                font-weight: 700;
+                color: #00D9FF !important;
+            }
+            [data-testid="stMetricLabel"] {
+                font-size: 1.1rem !important;
+                color: #B0B0B0 !important;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
 
+            /* Buttons */
+            button[kind="primary"], [data-testid="baseButton-primary"] {
+                background-color: #00D9FF !important;
+                color: #0E1117 !important;
+                border: none !important;
+                border-radius: 6px !important;
+                padding: 0.75rem 1.5rem !important;
+                font-weight: 600 !important;
+                width: 100%;
+            }
+            button[kind="primary"]:hover, [data-testid="baseButton-primary"]:hover {
+                background-color: #00B8D9 !important;
+                color: #0E1117 !important;
+            }
 
-        /* Buttons */
-        /* Primary Button (Generate) - Black Background, White Text */
-        button[kind="primary"], [data-testid="baseButton-primary"] {
-            background-color: #000000 !important;
-            color: #FFFFFF !important;
-            border: none !important;
-            border-radius: 6px !important;
-            padding: 0.75rem 1.5rem !important;
-            font-weight: 600 !important;
-            width: 100%;
-        }
-        button[kind="primary"]:hover, [data-testid="baseButton-primary"]:hover {
-            background-color: #333333 !important;
-            color: #FFFFFF !important;
-        }
+            button[kind="secondary"], [data-testid="baseButton-secondary"] {
+                background-color: transparent !important;
+                color: #FAFAFA !important;
+                border: 1px solid #FAFAFA !important;
+                border-radius: 6px !important;
+            }
+            button[kind="secondary"]:hover, [data-testid="baseButton-secondary"]:hover {
+                background-color: rgba(255, 255, 255, 0.1) !important;
+                color: #FAFAFA !important;
+            }
 
-        /* Secondary Button (Export) - Outline */
-        button[kind="secondary"], [data-testid="baseButton-secondary"] {
-            background-color: transparent !important;
-            color: #1A1A1A !important;
-            border: 1px solid #1A1A1A !important;
-            border-radius: 6px !important;
-        }
-        button[kind="secondary"]:hover, [data-testid="baseButton-secondary"]:hover {
-            background-color: #1A1A1A !important;
-            color: #FFFFFF !important;
-        }
+            .stTextInput > div > div > input, .stNumberInput > div > div > input, .stSelectbox > div > div > div {
+                border-radius: 6px;
+                background-color: #262730 !important;
+                color: #FAFAFA !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    # Light Mode CSS
+    st.markdown("""
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@700&display=swap');
 
-        /* Inputs */
-        .stTextInput > div > div > input, .stNumberInput > div > div > input, .stSelectbox > div > div > div {
-            border-radius: 6px;
-            border-color: #DADADA;
-        }
+            html, body, [class*="css"] {
+                font-family: 'Inter', sans-serif;
+            }
+            h1, h2, h3 {
+                font-weight: 700;
+            }
+            
+            .block-container {
+                padding-top: 2rem;
+                padding-bottom: 2rem;
+                max-width: 1440px;
+            }
+
+            .stMetric {
+                background-color: #F5F5F5;
+                padding: 1rem;
+                border-radius: 8px;
+            }
+            [data-testid="stMetricValue"] {
+                font-family: 'IBM Plex Mono', monospace;
+                font-size: 3rem !important;
+                font-weight: 700;
+                color: #285477;
+            }
+            [data-testid="stMetricLabel"] {
+                font-size: 1.1rem !important;
+                color: #666666;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            button[kind="primary"], [data-testid="baseButton-primary"] {
+                background-color: #000000 !important;
+                color: #FFFFFF !important;
+                border: none !important;
+                border-radius: 6px !important;
+                padding: 0.75rem 1.5rem !important;
+                font-weight: 600 !important;
+                width: 100%;
+            }
+            button[kind="primary"]:hover, [data-testid="baseButton-primary"]:hover {
+                background-color: #333333 !important;
+                color: #FFFFFF !important;
+            }
+
+            button[kind="secondary"], [data-testid="baseButton-secondary"] {
+                background-color: transparent !important;
+                color: #1A1A1A !important;
+                border: 1px solid #1A1A1A !important;
+                border-radius: 6px !important;
+            }
+            button[kind="secondary"]:hover, [data-testid="baseButton-secondary"]:hover {
+                background-color: #1A1A1A !important;
+                color: #FFFFFF !important;
+            }
+
+            .stTextInput > div > div > input, .stNumberInput > div > div > input, .stSelectbox > div > div > div {
+                border-radius: 6px;
+            }
 
         /* Remove default Streamlit top padding/decoration if possible */
         /* header {visibility: hidden;} */
@@ -114,7 +203,7 @@ if "region_selector" not in st.session_state:
     st.session_state.region_selector = "ERCOT"
 
 # Header
-st.image("logo.png", width=300)
+st.image("logo.png", width=600)
 st.markdown("<h2 style='color: #285477;'>8760 CE Simulator</h2>", unsafe_allow_html=True)
 st.markdown("---")
 
@@ -136,6 +225,14 @@ def randomize_scenario():
 
 # Sidebar Inputs
 with st.sidebar:
+    # Theme Toggle
+    theme_icon = "☀️" if st.session_state.dark_mode else "🌙"
+    theme_label = "Light Mode" if st.session_state.dark_mode else "Dark Mode"
+    if st.button(f"{theme_icon} {theme_label}", use_container_width=True):
+        st.session_state.dark_mode = not st.session_state.dark_mode
+        st.rerun()
+    
+    st.markdown("---")
     st.subheader("Configuration")
 
     # Control Buttons
@@ -143,7 +240,7 @@ with st.sidebar:
     with cb1:
         st.button("🎲 Randomize", on_click=randomize_scenario, type="secondary", use_container_width=True)
     with cb2:
-        st.button("🔄 Reset", on_click=reset_values, type="secondary", use_container_width=True)
+        st.button("Reset All", on_click=reset_values, type="secondary", use_container_width=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -481,7 +578,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     st.altair_chart(fin_heatmap, use_container_width=True)
     
     with st.expander("Show Example Calculations from Data"):
-        st.write("Here are two actual hours from your simulation (randomly selected):")
+        st.caption("Two actual hours from your simulation (randomly selected)")
         
         # Find a Net Cost Example (Deficit)
         cost_examples = df[df['Net_Load_MWh'] > 0]
