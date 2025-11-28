@@ -392,6 +392,10 @@ with st.sidebar:
     with st.form("analysis_config"):
         # Region
         region = st.selectbox("Region", ["ERCOT", "PJM", "CAISO", "MISO", "SPP", "NYISO", "ISO-NE"], key="region_selector")
+        
+        # Emissions Source
+        emissions_source = st.radio("Emissions Data Source", ["Hourly (CSV)", "Annual eGRID"], horizontal=True)
+        emissions_logic = "hourly" if emissions_source == "Hourly (CSV)" else "egrid"
 
         # Load inputs (only for Estimate Load)
         load_inputs = {}
@@ -485,7 +489,7 @@ with st.sidebar:
                         st.warning(f"Could not load emissions file: {e}")
 
                     # Calculate Metrics
-                    results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions)
+                    results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions, emissions_logic=emissions_logic)
                     
                     st.session_state.portfolio_data = {
                         "results": results,
@@ -785,6 +789,25 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     )
     st.altair_chart(rec_heatmap, use_container_width=True)
     
+    # Grid Emissions Intensity Heatmap
+    st.subheader("Grid Emissions Intensity Heatmap (lb/MWh)")
+    st.caption("Hourly grid emissions intensity. Darker red indicates higher emissions (dirtier grid).")
+    
+    # Use the same heatmap_data which has 'Emissions_Factor_lb_MWh'
+    # Aggregate by Month and Hour to smooth out variability if needed, or just plot raw if 8760
+    # For heatmap, usually we want average per month-hour
+    emissions_heatmap_agg = heatmap_data.groupby(['Month', 'Hour'])['Emissions_Factor_lb_MWh'].mean().reset_index()
+    
+    heatmap_emissions = alt.Chart(emissions_heatmap_agg).mark_rect().encode(
+        x=alt.X('Hour:O', title='Hour of Day'),
+        y=alt.Y('Month:O', title='Month', sort=months),
+        color=alt.Color('Emissions_Factor_lb_MWh:Q', title='lb/MWh', scale=alt.Scale(scheme='reds')),
+        tooltip=['Month', 'Hour', alt.Tooltip('Emissions_Factor_lb_MWh:Q', format='.2f', title='Emissions (lb/MWh)')]
+    ).properties(
+        height=300
+    )
+    st.altair_chart(heatmap_emissions, use_container_width=True)
+
     # Net REC Financial Position Heatmap
     st.subheader("Net REC Financial Position Heatmap")
     st.caption("Financial flow from selling excess RECs (Revenue) and buying needed RECs (Cost). Green = Net Revenue, Red = Net Cost.")
@@ -818,24 +841,6 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     )
     st.altair_chart(fin_heatmap, use_container_width=True)
 
-    # Grid Emissions Intensity Heatmap
-    st.subheader("Grid Emissions Intensity Heatmap (lb/MWh)")
-    st.caption("Hourly grid emissions intensity. Darker red indicates higher emissions (dirtier grid).")
-    
-    # Use the same heatmap_data which has 'Emissions_Factor_lb_MWh'
-    # Aggregate by Month and Hour to smooth out variability if needed, or just plot raw if 8760
-    # For heatmap, usually we want average per month-hour
-    emissions_heatmap_agg = heatmap_data.groupby(['Month', 'Hour'])['Emissions_Factor_lb_MWh'].mean().reset_index()
-    
-    heatmap_emissions = alt.Chart(emissions_heatmap_agg).mark_rect().encode(
-        x=alt.X('Hour:O', title='Hour of Day'),
-        y=alt.Y('Month:O', title='Month', sort=months),
-        color=alt.Color('Emissions_Factor_lb_MWh:Q', title='lb/MWh', scale=alt.Scale(scheme='reds')),
-        tooltip=['Month', 'Hour', alt.Tooltip('Emissions_Factor_lb_MWh:Q', format='.2f', title='Emissions (lb/MWh)')]
-    ).properties(
-        height=300
-    )
-    st.altair_chart(heatmap_emissions, use_container_width=True)
     
     with st.expander("Show Example Calculations from Data"):
         st.caption("Two actual hours from your simulation (randomly selected)")

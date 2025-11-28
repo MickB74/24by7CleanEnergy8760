@@ -210,7 +210,7 @@ def generate_synthetic_8760_data(year=2023, building_portfolio=None, region="Nat
     
     return df
 
-def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region="National Average", base_rec_price=0.50, battery_capacity_mwh=0.0, battery_efficiency=0.85, nuclear_capacity=0.0, geothermal_capacity=0.0, hydro_capacity=0.0, hourly_emissions_lb_mwh=None):
+def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region="National Average", base_rec_price=0.50, battery_capacity_mwh=0.0, battery_efficiency=0.85, nuclear_capacity=0.0, geothermal_capacity=0.0, hydro_capacity=0.0, hourly_emissions_lb_mwh=None, emissions_logic="hourly"):
     """
     Calculates portfolio metrics based on inputs.
     ...
@@ -347,9 +347,13 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         df['Hourly_Grid_Emissions_Hourly_lb'] = df['Grid_Consumption'] * df['Emissions_Factor_Hourly_lb_MWh']
         grid_emissions_hourly_mt = df['Hourly_Grid_Emissions_Hourly_lb'].sum() * lb_to_mt
         
-        # Set primary factor to Hourly
-        df['Emissions_Factor_lb_MWh'] = df['Emissions_Factor_Hourly_lb_MWh']
-        grid_emissions_mt = grid_emissions_hourly_mt
+        # Set primary factor based on logic
+        if emissions_logic == "hourly":
+            df['Emissions_Factor_lb_MWh'] = df['Emissions_Factor_Hourly_lb_MWh']
+            grid_emissions_mt = grid_emissions_hourly_mt
+        else:
+            df['Emissions_Factor_lb_MWh'] = df['Emissions_Factor_eGRID_lb_MWh']
+            grid_emissions_mt = grid_emissions_egrid_mt
     else:
         # Set primary factor to eGRID
         df['Emissions_Factor_lb_MWh'] = df['Emissions_Factor_eGRID_lb_MWh']
