@@ -677,6 +677,10 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             value=f"{results['grid_emissions_mt']:,.0f} MT",
             help="Estimated CO2e emissions from grid electricity consumption that is not hourly matched to clean energy."
         )
+        if results.get('grid_emissions_hourly_mt') is not None:
+             st.caption(f"Hourly Factors. (eGRID: {results['grid_emissions_egrid_mt']:,.0f} MT)")
+        else:
+             st.caption("Annual eGRID Factor.")
     with c3:
         st.metric(
             label="Consequential Emission Reduction",
