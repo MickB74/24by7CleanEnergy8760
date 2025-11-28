@@ -6,6 +6,7 @@ import random
 import time
 import utils
 import importlib
+import os
 importlib.reload(utils)
 
 # Page Config
@@ -468,8 +469,23 @@ with st.sidebar:
                     df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region)
                 
                 if df is not None:
+                    # Load Hourly Emissions Data if available
+                    hourly_emissions = None
+                    try:
+                        emissions_file = "intensity_ERCO_2024.csv"
+                        if os.path.exists(emissions_file):
+                            em_df = pd.read_csv(emissions_file)
+                            if 'carbon_intensity_g_kwh' in em_df.columns:
+                                # Convert g/kWh to lb/MWh
+                                # 1 g/kWh = 1 kg/MWh
+                                # 1 kg = 2.20462 lb
+                                hourly_emissions = em_df['carbon_intensity_g_kwh'] * 2.20462
+                                st.toast(f"Loaded hourly emissions from {emissions_file}", icon="🌍")
+                    except Exception as e:
+                        st.warning(f"Could not load emissions file: {e}")
+
                     # Calculate Metrics
-                    results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity)
+                    results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions)
                     
                     st.session_state.portfolio_data = {
                         "results": results,
@@ -789,14 +805,28 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             y=alt.Y('Month:N', sort=months, title=None),
             color=alt.Color('Net_REC_Flow', scale=alt.Scale(scheme='redyellowgreen', domain=[-max_val, max_val]), title='Avg Net $'),
             tooltip=[
-                alt.Tooltip('Month', title='Month'),
-                alt.Tooltip('Hour', title='Hour'),
-                alt.Tooltip('Net_REC_Flow', title='Avg Net Flow', format='$.2f')
-            ]
-    ).properties(
             height=300
     )
     st.altair_chart(fin_heatmap, use_container_width=True)
+
+    # Grid Emissions Intensity Heatmap
+    st.subheader("Grid Emissions Intensity Heatmap (lb/MWh)")
+    st.caption("Hourly grid emissions intensity. Darker red indicates higher emissions (dirtier grid).")
+    
+    # Use the same heatmap_data which has 'Emissions_Factor_lb_MWh'
+    # Aggregate by Month and Hour to smooth out variability if needed, or just plot raw if 8760
+    # For heatmap, usually we want average per month-hour
+    emissions_heatmap_agg = heatmap_data.groupby(['Month', 'Hour'])['Emissions_Factor_lb_MWh'].mean().reset_index()
+    
+    heatmap_emissions = alt.Chart(emissions_heatmap_agg).mark_rect().encode(
+        x=alt.X('Hour:O', title='Hour of Day'),
+        y=alt.Y('Month:O', title='Month', sort=months),
+        color=alt.Color('Emissions_Factor_lb_MWh:Q', title='lb/MWh', scale=alt.Scale(scheme='reds')),
+        tooltip=['Month', 'Hour', alt.Tooltip('Emissions_Factor_lb_MWh:Q', format='.2f', title='Emissions (lb/MWh)')]
+    ).properties(
+        height=300
+    )
+    st.altair_chart(heatmap_emissions, use_container_width=True)
     
     with st.expander("Show Example Calculations from Data"):
         st.caption("Two actual hours from your simulation (randomly selected)")
