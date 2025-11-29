@@ -484,21 +484,28 @@ with st.sidebar:
                         emissions_file = None
                         if region == "ERCOT":
                             emissions_file = "intensity_ERCO_2024.csv"
+                        else:
+                             # Debug
+                             # st.toast(f"Region is '{region}', skipping ERCOT file.", icon="ℹ️")
+                             pass
                             
-                        if emissions_file and os.path.exists(emissions_file):
-                            em_df = pd.read_csv(emissions_file)
-                            if 'carbon_intensity_g_kwh' in em_df.columns:
-                                # Convert g/kWh to lb/MWh
-                                # 1 g/kWh = 1 kg/MWh
-                                # 1 kg = 2.20462 lb
-                                raw_emissions = em_df['carbon_intensity_g_kwh'] * 2.20462
-                                
-                                # Align with df length
-                                if len(raw_emissions) >= len(df):
-                                    hourly_emissions = raw_emissions.iloc[:len(df)]
-                                    st.toast(f"Loaded hourly emissions from {emissions_file} (aligned to {len(df)} hours)", icon="🌍")
-                                else:
-                                    st.warning(f"⚠️ Emissions file has {len(raw_emissions)} rows, but simulation has {len(df)}. Using eGRID default.")
+                        if emissions_file:
+                            if os.path.exists(emissions_file):
+                                em_df = pd.read_csv(emissions_file)
+                                if 'carbon_intensity_g_kwh' in em_df.columns:
+                                    # Convert g/kWh to lb/MWh
+                                    # 1 g/kWh = 1 kg/MWh
+                                    # 1 kg = 2.20462 lb
+                                    raw_emissions = em_df['carbon_intensity_g_kwh'] * 2.20462
+                                    
+                                    # Align with df length
+                                    if len(raw_emissions) >= len(df):
+                                        hourly_emissions = raw_emissions.iloc[:len(df)]
+                                        st.toast(f"Loaded hourly emissions from {emissions_file} (aligned to {len(df)} hours)", icon="🌍")
+                                    else:
+                                        st.warning(f"⚠️ Emissions file has {len(raw_emissions)} rows, but simulation has {len(df)}. Using eGRID default.")
+                            else:
+                                st.toast(f"File {emissions_file} not found!", icon="❌")
                     except Exception as e:
                         st.warning(f"Could not load emissions file: {e}")
 
