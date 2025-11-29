@@ -450,9 +450,12 @@ with st.sidebar:
                             break
                     
                     if load_col:
-                        # Generate base synthetic data structure
-                        df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=[], region=region)
-                        
+                        # Use ERCOT CSV when available, otherwise synthetic baseline
+                        if region == "ERCOT":
+                            df = utils.load_ercot_2023_hourly_data()
+                        else:
+                            df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=[], region=region)
+
                         # Replace the Load column with uploaded data
                         if len(uploaded_df) == 8760:
                             df['Load'] = uploaded_df[load_col].values
@@ -473,9 +476,18 @@ with st.sidebar:
                     for b_type, val in load_inputs.items():
                         if val > 0:
                             portfolio_list.append({'type': b_type, 'annual_mwh': val})
-                    
+
                     # Generate Data
-                    df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region, seed=42)
+                    if region == "ERCOT":
+                        base_df = utils.load_ercot_2023_hourly_data()
+                        load_df = utils.generate_load_profiles(base_df['timestamp'], building_portfolio=portfolio_list)
+                        df = base_df.copy()
+                        df['Load'] = load_df['Load']
+                        for col in load_df.columns:
+                            if col.startswith('Load_'):
+                                df[col] = load_df[col]
+                    else:
+                        df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region, seed=42)
                 
                 if df is not None:
                     # Load Hourly Emissions Data if available and requested
@@ -723,39 +735,60 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
              st.caption("Annual eGRID Factor.")
             
     st.markdown("---")
-    
+
     # Chart Section
-    st.subheader("Load vs Renewables (8760)")
-    
-    # Simplified Sparkline/Line Chart
-    base = alt.Chart(df.reset_index()).encode(x=alt.X('timestamp', title=None, axis=None))
-    
+    st.subheader("Load vs Renewables")
+
+    chart_view = st.radio(
+        "Chart View",
+        ["Hourly (8760)", "Monthly"],
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+    if chart_view == "Monthly":
+        chart_df = (
+            df.copy()
+            .assign(Month=df['timestamp'].dt.to_period('M').dt.to_timestamp())
+            .groupby('Month', sort=True)[['Load_Actual', 'Total_Renewable_Gen']]
+            .sum()
+            .reset_index()
+        )
+        x_encoding = alt.X('Month:T', title=None, axis=alt.Axis(format='%b', labelAngle=0))
+        y_axis = alt.Axis(title='MWh')
+    else:
+        chart_df = df.reset_index()
+        x_encoding = alt.X('timestamp:T', title=None, axis=None)
+        y_axis = None
+
     # Define colors
     domain = ['Load', 'Generation']
     range_ = ['#FF00FF', '#000000']
 
+    base = alt.Chart(chart_df).encode(x=x_encoding)
+
     line_load = base.mark_line(strokeWidth=1).transform_calculate(
-            Source="'Load'"
+        Source="'Load'"
     ).encode(
-            y=alt.Y('Load_Actual', title=None, axis=None),
-            color=alt.Color('Source:N', scale=alt.Scale(domain=domain, range=range_), title=None)
+        y=alt.Y('Load_Actual', title=None, axis=y_axis),
+        color=alt.Color('Source:N', scale=alt.Scale(domain=domain, range=range_), title=None)
     )
-    
+
     line_gen = base.mark_line(strokeWidth=1).transform_calculate(
-            Source="'Generation'"
+        Source="'Generation'"
     ).encode(
-            y=alt.Y('Total_Renewable_Gen', title=None, axis=None),
-            color=alt.Color('Source:N', scale=alt.Scale(domain=domain, range=range_), title=None)
+        y=alt.Y('Total_Renewable_Gen', title=None, axis=y_axis),
+        color=alt.Color('Source:N', scale=alt.Scale(domain=domain, range=range_), title=None)
     )
-    
+
     chart = alt.layer(line_gen, line_load).properties(
-            height=200,
-            width='container'
+        height=200,
+        width='container'
     ).configure_view(strokeWidth=0).configure_legend(
-            orient='bottom',
-            title=None
+        orient='bottom',
+        title=None
     )
-    
+
     st.altair_chart(chart, use_container_width=True)
     
     # Mini Heatmap (Month x Hour)
