@@ -481,8 +481,11 @@ with st.sidebar:
                     # Load Hourly Emissions Data if available
                     hourly_emissions = None
                     try:
-                        emissions_file = "intensity_ERCO_2024.csv"
-                        if os.path.exists(emissions_file):
+                        emissions_file = None
+                        if region == "ERCOT":
+                            emissions_file = "intensity_ERCO_2024.csv"
+                            
+                        if emissions_file and os.path.exists(emissions_file):
                             em_df = pd.read_csv(emissions_file)
                             if 'carbon_intensity_g_kwh' in em_df.columns:
                                 # Convert g/kWh to lb/MWh
