@@ -729,6 +729,45 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         else:
              st.caption(f"{results['effective_gen']:,.0f} MWh (Gen) * {results['egrid_factor_lb']:.1f} lb/MWh")
             
+    with st.expander("Show Emissions Calculation Examples"):
+        st.caption("Examples of how emissions are calculated for a single hour (randomly selected).")
+        if df is not None and not df.empty:
+            ex_row = df.sample(1).iloc[0]
+            
+            # Location Based
+            loc_em = ex_row['Load_Actual'] * results['egrid_factor_lb']
+            
+            # Market Based
+            if emissions_logic == 'hourly' and 'Hourly_Grid_Emissions_lb' in ex_row:
+                mkt_factor = ex_row['Emissions_Factor_Hourly_lb_MWh'] if 'Emissions_Factor_Hourly_lb_MWh' in ex_row else 0
+                mkt_em = ex_row['Hourly_Grid_Emissions_lb']
+                mkt_desc = f"{ex_row['Grid_Consumption']:.1f} MWh (Grid) × {mkt_factor:.1f} lb/MWh"
+            else:
+                mkt_em = ex_row['Grid_Consumption'] * results['egrid_factor_lb']
+                mkt_desc = f"{ex_row['Grid_Consumption']:.1f} MWh (Grid) × {results['egrid_factor_lb']:.1f} lb/MWh"
+                
+            # Consequential
+            if emissions_logic == 'hourly' and 'Hourly_Avoided_Emissions_lb' in ex_row:
+                avoid_factor = ex_row['Emissions_Factor_Hourly_lb_MWh'] if 'Emissions_Factor_Hourly_lb_MWh' in ex_row else 0
+                avoid_em = ex_row['Hourly_Avoided_Emissions_lb']
+                avoid_desc = f"{ex_row['Effective_Gen']:.1f} MWh (Gen) × {avoid_factor:.1f} lb/MWh"
+            else:
+                avoid_em = ex_row['Effective_Gen'] * results['egrid_factor_lb']
+                avoid_desc = f"{ex_row['Effective_Gen']:.1f} MWh (Gen) × {results['egrid_factor_lb']:.1f} lb/MWh"
+
+            st.markdown(f"""
+            **Time**: {ex_row['timestamp'].strftime('%B %d, %H:00')}
+            
+            **1. Location Based Emissions**
+            - {ex_row['Load_Actual']:.1f} MWh (Total Load) × {results['egrid_factor_lb']:.1f} lb/MWh = **{loc_em:,.1f} lb**
+            
+            **2. Market Based 24/7 Emissions**
+            - {mkt_desc} = **{mkt_em:,.1f} lb**
+            
+            **3. Consequential Emission Reduction**
+            - {avoid_desc} = **{avoid_em:,.1f} lb**
+            """)
+
     st.markdown("---")
     
     # Chart Section
