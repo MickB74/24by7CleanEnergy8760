@@ -486,6 +486,8 @@ with st.sidebar:
                             emissions_file = "intensity_ERCO_2024.csv"
                         elif region == "PJM":
                             emissions_file = "intensity_PJM_2024.csv"
+                        elif region == "MISO":
+                            emissions_file = "intensity_MISO_2024.csv"
                         else:
                              # Debug
                              # st.toast(f"Region is '{region}', skipping ERCOT file.", icon="ℹ️")
