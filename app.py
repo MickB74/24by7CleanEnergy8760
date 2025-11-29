@@ -402,22 +402,7 @@ with st.sidebar:
         emissions_source = st.radio("Emissions Data Source", ["Hourly", "Annual eGRID"], index=0, horizontal=True)
         emissions_logic = "hourly" if emissions_source == "Hourly" else "egrid"
 
-        # ... (lines 405-585 unchanged) ...
 
-                    # CRITICAL VALIDATION: Stop if hourly was requested but not available
-                    if emissions_logic == "hourly" and hourly_emissions is None:
-                        st.error("🛑 **ANALYSIS STOPPED**")
-                        st.error(f"**You selected 'Hourly' but hourly emissions data could not be loaded for {region}.**")
-                        st.error("**Possible causes:**")
-                        st.error("1. The `combinedISOCarbon2024.csv` file is missing or corrupted")
-                        st.error(f"2. No data exists for ISO code '{region}' in the file")
-                        st.error("3. The file format is incorrect (missing required columns)")
-                        st.error("")
-                        st.error("**What to do:**")
-                        st.error("- Check that `combinedISOCarbon2024.csv` exists in the project directory")
-                        st.error("- Verify the file contains data for your selected region")
-                        st.error("- OR switch to 'Annual eGRID' emissions source to continue")
-                        st.stop()  # Hard stop - don't continue with analysis
 
         # Load inputs (only for Estimate Load)
         load_inputs = {}
@@ -604,7 +589,7 @@ with st.sidebar:
                     # CRITICAL VALIDATION: Stop if hourly was requested but not available
                     if emissions_logic == "hourly" and hourly_emissions is None:
                         st.error("🛑 **ANALYSIS STOPPED**")
-                        st.error(f"**You selected 'Hourly (CSV)' but hourly emissions data could not be loaded for {region}.**")
+                        st.error(f"**You selected 'Hourly' but hourly emissions data could not be loaded for {region}.**")
                         st.error("**Possible causes:**")
                         st.error("1. The `combinedISOCarbon2024.csv` file is missing or corrupted")
                         st.error(f"2. No data exists for ISO code '{region}' in the file")
