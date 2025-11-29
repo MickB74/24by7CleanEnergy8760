@@ -303,6 +303,10 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         # No battery
         df['Hourly_CFE_MWh'] = np.minimum(df['Total_Renewable_Gen'], df['Load_Actual'])
         df['Effective_Gen'] = df['Total_Renewable_Gen']
+        # Initialize missing columns to 0 to prevent KeyError
+        df['Battery_Discharge'] = 0.0
+        df['Battery_Charge'] = 0.0
+        df['Battery_SOC'] = 0.0
     
     df['Hourly_CFE_Ratio'] = np.where(df['Load_Actual'] > 0, df['Hourly_CFE_MWh'] / df['Load_Actual'], 1.0)
     
