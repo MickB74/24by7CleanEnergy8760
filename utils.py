@@ -464,6 +464,7 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     results = {
         "total_annual_load": total_annual_load,
         "total_renewable_gen": total_renewable_gen,
+        "effective_gen": df['Effective_Gen'].sum(),
         "annual_re_percent": (total_renewable_gen / total_annual_load * 100) if total_annual_load > 0 else 0,
         "cfe_percent": cfe_score,
         "loss_of_green_hour_percent": loss_of_green_hour_percent,

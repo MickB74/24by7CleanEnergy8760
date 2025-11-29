@@ -705,7 +705,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             value=f"{results['location_based_emissions_mt']:,.0f} MT",
             help="Total emissions if no renewables were used (Total Load * Grid Factor). Note: If there is overgeneration, Avoided + Grid Emissions will be greater than Location Based, as you avoid extra emissions by exporting clean energy."
         )
-        st.caption(f"Grid Factor: {results['egrid_factor_lb']:.1f} lb/MWh")
+        st.caption(f"{results['total_annual_load']:,.0f} MWh * {results['egrid_factor_lb']:.1f} lb/MWh")
     with c2:
         st.metric(
             label="Market Based 24/7 Emissions",
@@ -713,9 +713,9 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             help="Estimated CO2e emissions from grid electricity consumption that is not hourly matched to clean energy."
         )
         if results.get('grid_emissions_hourly_mt') is not None:
-             st.caption(f"Hourly Factors. (eGRID: {results['grid_emissions_egrid_mt']:,.0f} MT)")
+             st.caption(f"{results['grid_consumption']:,.0f} MWh (Grid) * Hourly Factors")
         else:
-             st.caption("Annual eGRID Factor.")
+             st.caption(f"{results['grid_consumption']:,.0f} MWh (Grid) * {results['egrid_factor_lb']:.1f} lb/MWh")
     with c3:
         st.metric(
             label="Consequential Emission Reduction",
@@ -723,9 +723,9 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             help="Carbon factor where the clean energy is generated * Clean Energy Generation."
         )
         if results.get('avoided_emissions_hourly_mt') is not None:
-             st.caption(f"Hourly Factors. (eGRID: {results['avoided_emissions_egrid_mt']:,.0f} MT)")
+             st.caption(f"{results['effective_gen']:,.0f} MWh (Gen) * Hourly Factors")
         else:
-             st.caption("Annual eGRID Factor.")
+             st.caption(f"{results['effective_gen']:,.0f} MWh (Gen) * {results['egrid_factor_lb']:.1f} lb/MWh")
             
     st.markdown("---")
     
