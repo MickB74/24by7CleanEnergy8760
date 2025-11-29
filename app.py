@@ -478,33 +478,77 @@ with st.sidebar:
                     df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region, seed=42)
                 
                 if df is not None:
-                    # Load Hourly Emissions Data if available
+                    # Load Hourly Emissions Data if available and requested
                     hourly_emissions = None
-                    try:
-                        emissions_file = "intensity_ERCO_2024.csv"
-                        if os.path.exists(emissions_file):
-                            em_df = pd.read_csv(emissions_file)
-                            if 'carbon_intensity_g_kwh' in em_df.columns:
-                                # Convert g/kWh to lb/MWh
-                                # 1 g/kWh = 1 kg/MWh
-                                # 1 kg = 2.20462 lb
-                                raw_emissions = em_df['carbon_intensity_g_kwh'] * 2.20462
-                                
-                                # Align with df length
-                                if len(raw_emissions) >= len(df):
-                                    hourly_emissions = raw_emissions.iloc[:len(df)]
-                                    st.toast(f"Loaded hourly emissions from {emissions_file} (aligned to {len(df)} hours)", icon="🌍")
-                                else:
-                                    st.warning(f"⚠️ Emissions file has {len(raw_emissions)} rows, but simulation has {len(df)}. Using eGRID default.")
-                    except Exception as e:
-                        st.warning(f"Could not load emissions file: {e}")
+                    hourly_emissions_loaded = False
+                    if emissions_logic == "hourly":
+                        try:
+                            # Only ERCOT currently has an hourly dataset bundled with the app
+                            hourly_sources = {
+                                "ERCOT": {
+                                    "files": ["intensity_ERCO_2024.csv", os.path.join("data", "intensity_ERCO_2024.csv")],
+                                    "columns": [
+                                        "carbon_intensity_g_kwh",
+                                        "carbon_intensity_gco2_per_kwh",
+                                        "carbon_intensity_gco2_kwh",
+                                    ],
+                                    "unit": "g_per_kwh",
+                                }
+                            }
+
+                            if region in hourly_sources:
+                                source_info = hourly_sources[region]
+                                emissions_file = next((f for f in source_info["files"] if os.path.exists(f)), None)
+
+                                if emissions_file:
+                                    em_df = pd.read_csv(emissions_file)
+
+                                    emission_col = next((c for c in source_info["columns"] if c in em_df.columns), None)
+                                    if emission_col is None:
+                                        # fall back to first numeric column that looks like intensity data
+                                        numeric_cols = [c for c in em_df.columns if np.issubdtype(em_df[c].dtype, np.number)]
+                                        emission_col = numeric_cols[0] if numeric_cols else None
+
+                                    if emission_col:
+                                        if source_info["unit"] == "g_per_kwh":
+                                            raw_emissions = em_df[emission_col] * 2.20462
+                                        else:
+                                            raw_emissions = em_df[emission_col]
+
+                                        if len(raw_emissions) >= len(df):
+                                            hourly_emissions = raw_emissions.iloc[:len(df)]
+                                            hourly_emissions_loaded = True
+                                            st.toast(
+                                                f"Loaded ERCOT hourly emissions from {emissions_file} (aligned to {len(df)} hours)",
+                                                icon="🌍",
+                                            )
+                                        else:
+                                            st.warning(
+                                                f"⚠️ Emissions file has {len(raw_emissions)} rows, but simulation has {len(df)}. Using eGRID default."
+                                            )
+                                    else:
+                                        st.warning(
+                                            f"⚠️ Could not find an emissions intensity column in {emissions_file}. Using eGRID default."
+                                        )
+                            else:
+                                st.warning("⚠️ Hourly emissions are only configured for ERCOT. Using annual eGRID factors for other regions.")
+
+                            if not hourly_emissions_loaded:
+                                st.warning("⚠️ Hourly emissions data not available. Falling back to annual eGRID factors.")
+                                emissions_logic = "egrid"
+                        except Exception as e:
+                            st.warning(f"Could not load emissions file: {e}")
+                            emissions_logic = "egrid"
 
                     # Calculate Metrics
                     results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions, emissions_logic=emissions_logic)
+
+                    # Track which emissions source actually powered the results
+                    emissions_source_used = emissions_source if emissions_logic == "hourly" else "Annual eGRID (fallback)"
                     
                     # Debug: Show which emissions logic is being used
-                    st.toast(f"Using {emissions_source} emissions data", icon="📊")
-                    
+                    st.toast(f"Using {emissions_source_used} emissions data", icon="📊")
+
                     st.session_state.portfolio_data = {
                         "results": results,
                         "df": df_result,
@@ -515,7 +559,7 @@ with st.sidebar:
                         "geothermal_capacity": geothermal_capacity,
                         "hydro_capacity": hydro_capacity,
                         "emissions_logic": emissions_logic,
-                        "emissions_source": emissions_source
+                        "emissions_source": emissions_source_used
                     }
                     st.session_state.analysis_complete = True
                     st.rerun()
