@@ -851,13 +851,13 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             **Time**: {ex_row['timestamp'].strftime('%B %d, %H:00')}
             
             **1. Location Based Emissions**
-            - {ex_row['Load_Actual']:.1f} MWh (Total Load) × {results['egrid_factor_lb']:.1f} lb/MWh = **{loc_em:,.1f} lb**
+            - {ex_row['Load_Actual']:.1f} MWh (Total Load) × {results['egrid_factor_lb']:.1f} lb/MWh = **{loc_em:,.1f} lbs**
             
             **2. Market Based 24/7 Emissions**
-            - {mkt_desc} = **{mkt_em:,.1f} lb**
+            - {mkt_desc} = **{mkt_em:,.1f} lbs**
             
             **3. Consequential Emission Reduction**
-            - {avoid_desc} = **{avoid_em:,.1f} lb**
+            - {avoid_desc} = **{avoid_em:,.1f} lbs**
             """)
 
     st.markdown("---")
