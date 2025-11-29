@@ -450,9 +450,12 @@ with st.sidebar:
                             break
                     
                     if load_col:
-                        # Generate base synthetic data structure
-                        df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=[], region=region)
-                        
+                        # Use ERCOT CSV when available, otherwise synthetic baseline
+                        if region == "ERCOT":
+                            df = utils.load_ercot_2023_hourly_data()
+                        else:
+                            df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=[], region=region)
+
                         # Replace the Load column with uploaded data
                         if len(uploaded_df) == 8760:
                             df['Load'] = uploaded_df[load_col].values
@@ -473,9 +476,18 @@ with st.sidebar:
                     for b_type, val in load_inputs.items():
                         if val > 0:
                             portfolio_list.append({'type': b_type, 'annual_mwh': val})
-                    
+
                     # Generate Data
-                    df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region, seed=42)
+                    if region == "ERCOT":
+                        base_df = utils.load_ercot_2023_hourly_data()
+                        load_df = utils.generate_load_profiles(base_df['timestamp'], building_portfolio=portfolio_list)
+                        df = base_df.copy()
+                        df['Load'] = load_df['Load']
+                        for col in load_df.columns:
+                            if col.startswith('Load_'):
+                                df[col] = load_df[col]
+                    else:
+                        df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region, seed=42)
                 
                 if df is not None:
                     # Load Hourly Emissions Data if available and requested

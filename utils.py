@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import io
@@ -20,8 +21,11 @@ def generate_load_profile_shape(dates, building_type):
     Generates a normalized load profile shape for a given building type.
     Uses defined 24-hour profiles with added seasonality and noise.
     """
-    day_of_year = dates.dayofyear.to_numpy()
-    hour_of_day = dates.hour.to_numpy()
+    # Accept either a DatetimeIndex, Series, or array-like of timestamps
+    date_index = pd.DatetimeIndex(pd.to_datetime(dates))
+
+    day_of_year = date_index.dayofyear.to_numpy()
+    hour_of_day = date_index.hour.to_numpy()
     
     # Get base 24-hour profile
     base_profile_24h = np.array(LOAD_PROFILES.get(building_type, LOAD_PROFILES['Office']))
@@ -211,9 +215,57 @@ def generate_synthetic_8760_data(year=2023, building_portfolio=None, region="Nat
         df[base_name] = final_profile
         total_load += final_profile
         
-    df['Load'] = total_load
-    
+        df['Load'] = total_load
+
     return df
+
+
+def load_ercot_2023_hourly_data(path: str = "data/ercot_hourly_2023.csv"):
+    """Load ERCOT 2023 hourly generation (and base load) from CSV.
+
+    The CSV is expected to contain 8760 rows with a timestamp column plus
+    resource columns such as Solar, Wind, Nuclear, Geothermal, Hydro, and Load.
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"ERCOT hourly data not found at {path}")
+
+    df = pd.read_csv(path, parse_dates=['timestamp'])
+    if len(df) != 8760:
+        raise ValueError(f"ERCOT hourly CSV should have 8760 rows, found {len(df)}")
+    return df
+
+
+def generate_load_profiles(dates, building_portfolio=None):
+    """Generate load profiles for the provided building portfolio.
+
+    Uses the same logic as generate_synthetic_8760_data but returns only the
+    load-related columns so it can be paired with externally sourced
+    generation (e.g., ERCOT CSV).
+    """
+    if building_portfolio is None or len(building_portfolio) == 0:
+        building_portfolio = [{'type': 'Office', 'annual_mwh': 1000}]
+
+    load_df = pd.DataFrame({'timestamp': dates})
+    total_load = np.zeros(len(dates))
+
+    for idx, building in enumerate(building_portfolio):
+        b_type = building.get('type', 'Office')
+        target_mwh = building.get('annual_mwh', 1000)
+
+        raw_profile = generate_load_profile_shape(dates, b_type)
+        current_sum = raw_profile.sum()
+        if current_sum > 0:
+            scaling_factor = target_mwh / current_sum
+            final_profile = raw_profile * scaling_factor
+        else:
+            final_profile = raw_profile
+
+        col_name = f"Load_{b_type}_{idx+1}"
+        load_df[col_name] = final_profile
+        total_load += final_profile
+
+    load_df['Load'] = total_load
+    return load_df
 
 def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region="National Average", base_rec_price=0.50, battery_capacity_mwh=0.0, battery_efficiency=0.85, nuclear_capacity=0.0, geothermal_capacity=0.0, hydro_capacity=0.0, hourly_emissions_lb_mwh=None, emissions_logic="hourly"):
     """
