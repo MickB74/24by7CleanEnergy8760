@@ -511,11 +511,47 @@ def create_zip_export(results, df, portfolio_name, region, inputs=None):
     json_str = json.dumps(summary_dict, indent=4)
     
     # 2. CSV Dataset
-    # "csv always needs timestamps for each hour and a new column for hourly Carbon free electricity"
-    # We already calculated 'Hourly_CFE_Ratio' in the df.
-    # Ensure timestamps are present.
+    # Create a clean version for export with clear units and no duplicates
+    export_columns = {
+        'timestamp': 'Timestamp',
+        'Load_Actual': 'Load (MWh)',
+        'Solar_Gen': 'Solar Generation (MWh)',
+        'Wind_Gen': 'Wind Generation (MWh)',
+        'Nuclear_Gen': 'Nuclear Generation (MWh)',
+        'Geothermal_Gen': 'Geothermal Generation (MWh)',
+        'Hydro_Gen': 'Hydro Generation (MWh)',
+        'Total_Renewable_Gen': 'Total Renewable Generation (MWh)',
+        'Battery_Charge': 'Battery Charge (MWh)',
+        'Battery_Discharge': 'Battery Discharge (MWh)',
+        'Battery_SoC': 'Battery State of Charge (MWh)',
+        'Effective_Gen': 'Effective Clean Energy (MWh)',
+        'Grid_Consumption': 'Grid Consumption (MWh)',
+        'Net_Load_MWh': 'Net Load (MWh)',
+        'REC_Price_USD': 'REC Price ($/MWh)',
+        'REC_Cost': 'REC Cost ($)',
+        'REC_Revenue': 'REC Revenue ($)',
+        'Emissions_Factor_lb_MWh': 'Grid Emissions Factor (lb/MWh)',
+        'Hourly_Grid_Emissions_lb': 'Grid Emissions (lb)',
+        'Hourly_Avoided_Emissions_lb': 'Avoided Emissions (lb)',
+        'Hourly_CFE_Ratio': 'Hourly CFE Ratio',
+        'Hourly_Renewable_Ratio': 'Hourly Renewable Ratio',
+        'Solar Capacity Factor': 'Solar Capacity Factor (%)',
+        'Wind Capacity Factor': 'Wind Capacity Factor (%)',
+        'Load Profile': 'Base Load Profile (MWh)'
+    }
+    
+    # Add optional columns if they exist
+    if 'Emissions_Factor_Hourly_lb_MWh' in df.columns:
+        export_columns['Emissions_Factor_Hourly_lb_MWh'] = 'Hourly Emissions Factor (lb/MWh)'
+    if 'Emissions_Factor_eGRID_lb_MWh' in df.columns:
+        export_columns['Emissions_Factor_eGRID_lb_MWh'] = 'eGRID Emissions Factor (lb/MWh)'
+        
+    # Filter and Rename
+    final_cols = {k: v for k, v in export_columns.items() if k in df.columns}
+    df_export = df[list(final_cols.keys())].rename(columns=final_cols)
+    
     csv_buffer = io.StringIO()
-    df.to_csv(csv_buffer, index=False)
+    df_export.to_csv(csv_buffer, index=False)
     
     # 3. Zip File
     zip_buffer = io.BytesIO()
