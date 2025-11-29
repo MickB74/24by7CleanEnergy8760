@@ -546,6 +546,11 @@ def create_zip_export(results, df, portfolio_name, region, inputs=None):
     if 'Emissions_Factor_eGRID_lb_MWh' in df.columns:
         export_columns['Emissions_Factor_eGRID_lb_MWh'] = 'eGRID Emissions Factor (lb/MWh)'
         
+    # Add building load columns if they exist
+    for b_type in LOAD_PROFILES.keys():
+        if b_type in df.columns:
+            export_columns[b_type] = f"{b_type} Load (MWh)"
+        
     # Filter and Rename
     final_cols = {k: v for k, v in export_columns.items() if k in df.columns}
     df_export = df[list(final_cols.keys())].rename(columns=final_cols)
