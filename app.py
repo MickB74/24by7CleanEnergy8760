@@ -815,7 +815,9 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             help="Carbon factor where the clean energy is generated * Clean Energy Generation."
         )
         if results.get('avoided_emissions_hourly_mt') is not None:
+             implied_avoided_factor = results.get('implied_annual_avoided_emissions_factor_lb_mwh', 0)
              st.caption(f"{results['effective_gen']:,.0f} MWh (Gen) * Hourly Factors")
+             st.caption(f"**Implied Annual Factor:** {implied_avoided_factor:.1f} lb/MWh")
         else:
              st.caption(f"{results['effective_gen']:,.0f} MWh (Gen) * {results['egrid_factor_lb']:.1f} lb/MWh")
             

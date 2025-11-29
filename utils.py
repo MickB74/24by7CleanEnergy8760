@@ -479,6 +479,14 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         # Use the primary emissions metric (which is set based on logic)
         total_emissions_lb = df['Hourly_Grid_Emissions_lb'].sum()
         implied_annual_emissions_factor_lb_mwh = total_emissions_lb / total_grid_consumption
+        
+    # Calculate Implied Annual Avoided Emissions Factor
+    implied_annual_avoided_emissions_factor_lb_mwh = 0.0
+    total_effective_gen = df['Effective_Gen'].sum()
+    
+    if total_effective_gen > 0:
+        total_avoided_lb = df['Hourly_Avoided_Emissions_lb'].sum()
+        implied_annual_avoided_emissions_factor_lb_mwh = total_avoided_lb / total_effective_gen
     
     # Results Dictionary
     results = {
@@ -499,6 +507,7 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         "location_based_emissions_mt": location_based_emissions_mt,
         "mw_match_productivity": mw_match_productivity,
         "implied_annual_emissions_factor_lb_mwh": implied_annual_emissions_factor_lb_mwh,
+        "implied_annual_avoided_emissions_factor_lb_mwh": implied_annual_avoided_emissions_factor_lb_mwh,
         "total_rec_cost": total_rec_cost,
         "total_rec_revenue": total_rec_revenue,
         "net_rec_cost": net_rec_cost,
