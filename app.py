@@ -958,15 +958,18 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     st.altair_chart(rec_heatmap, use_container_width=True)
     
     with st.expander("Show REC Valuation Logic"):
-        st.markdown("""
+        # Calculate dynamic prices for display
+        scale = base_rec_price / 8.0
+        
+        st.markdown(f"""
         **REC Pricing Categories (based on grid scarcity):**
         
-        *   **Critical Scarcity ($20.00/MWh):** Winter Evening Peak (Dec-Feb, 18:00-20:00). Highest value.
-        *   **Evening Peak ($10.00/MWh):** Typical Evening Peak (17:00-21:00). High value.
-        *   **Winter Morning Scarcity ($7.00/MWh):** Winter Mornings (Dec-Feb, 06:00-09:00).
-        *   **Shoulder Daylight ($3.00/MWh):** Morning/Afternoon transition (07:00-10:00 & 15:00-18:00).
-        *   **Typical Mid-Day ($1.00/MWh):** Nov-Feb Mid-day (10:00-15:00).
-        *   **Super-Abundant Mid-Day ($0.25/MWh):** Mar-Oct Mid-day (10:00-15:00). Lowest value due to solar abundance.
+        *   **Critical Scarcity (${20.00 * scale:.2f}/MWh):** Winter Evening Peak (Dec-Feb, 18:00-20:00). Highest value.
+        *   **Evening Peak (${10.00 * scale:.2f}/MWh):** Typical Evening Peak (17:00-21:00). High value.
+        *   **Winter Morning Scarcity (${7.00 * scale:.2f}/MWh):** Winter Mornings (Dec-Feb, 06:00-09:00).
+        *   **Shoulder Daylight (${3.00 * scale:.2f}/MWh):** Morning/Afternoon transition (07:00-10:00 & 15:00-18:00).
+        *   **Typical Mid-Day (${1.00 * scale:.2f}/MWh):** Nov-Feb Mid-day (10:00-15:00).
+        *   **Super-Abundant Mid-Day (${0.25 * scale:.2f}/MWh):** Mar-Oct Mid-day (10:00-15:00). Lowest value due to solar abundance.
         """)
     
     # Grid Emissions Intensity Heatmap
