@@ -466,16 +466,30 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     total_rec_revenue = df['REC_Revenue'].sum()
     # Net = Revenue + Cost (where Cost is negative)
     net_rec_cost = total_rec_cost + total_rec_revenue
+    # Calculate Implied Annual Emissions Factor (Weighted Average)
+    # Total Emissions (lb) / Total Grid Consumption (MWh)
+    implied_annual_emissions_factor_lb_mwh = 0.0
+    total_grid_consumption = df['Grid_Consumption'].sum()
     
+    if total_grid_consumption > 0:
+        # Use the primary emissions metric (which is set based on logic)
+        total_emissions_lb = df['Hourly_Grid_Emissions_lb'].sum()
+        implied_annual_emissions_factor_lb_mwh = total_emissions_lb / total_grid_consumption
+    
+    # Results Dictionary
     results = {
-        "total_annual_load": total_annual_load,
-        "total_renewable_gen": total_renewable_gen,
-        "effective_gen": df['Effective_Gen'].sum(),
-        "annual_re_percent": (total_renewable_gen / total_annual_load * 100) if total_annual_load > 0 else 0,
-        "cfe_percent": cfe_score,
-        "loss_of_green_hour_percent": loss_of_green_hour_percent,
-        "overgeneration": overgeneration,
-        "grid_consumption": grid_consumption,
+        "annual_load_mwh": df['Load_Actual'].sum(),
+        "total_gen_mwh": df['Total_Renewable_Gen'].sum(), # Assuming Total_Renewable_Gen is the intended 'Total_Gen'
+        "solar_gen_mwh": df['Solar_Gen'].sum(),
+        "wind_gen_mwh": df['Wind_Gen'].sum(),
+        "nuclear_gen_mwh": df['Nuclear_Gen'].sum(),
+        "geothermal_gen_mwh": df['Geothermal_Gen'].sum(),
+        "hydro_gen_mwh": df['Hydro_Gen'].sum(),
+        "battery_discharge_mwh": df['Battery_Discharge'].sum(),
+        "grid_consumption_mwh": total_grid_consumption,
+        "curtailed_energy_mwh": overgeneration, # Assuming overgeneration is the intended 'Curtailed_Energy'
+        "matched_energy_mwh": matched_energy_mwh,
+        "cfe_score": cfe_score,
         "grid_emissions_mt": grid_emissions_mt,
         "grid_emissions_egrid_mt": grid_emissions_egrid_mt,
         "grid_emissions_hourly_mt": grid_emissions_hourly_mt,
@@ -484,6 +498,7 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         "avoided_emissions_hourly_mt": avoided_emissions_hourly_mt,
         "location_based_emissions_mt": location_based_emissions_mt,
         "mw_match_productivity": mw_match_productivity,
+        "implied_annual_emissions_factor_lb_mwh": implied_annual_emissions_factor_lb_mwh,
         "total_rec_cost": total_rec_cost,
         "total_rec_revenue": total_rec_revenue,
         "net_rec_cost": net_rec_cost,

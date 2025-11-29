@@ -801,7 +801,9 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             help="Estimated CO2e emissions from grid electricity consumption that is not hourly matched to clean energy."
         )
         if results.get('grid_emissions_hourly_mt') is not None:
+             implied_factor = results.get('implied_annual_emissions_factor_lb_mwh', 0)
              st.caption(f"{results['grid_consumption']:,.0f} MWh (Grid) * Hourly Factors")
+             st.caption(f"**Implied Annual Factor:** {implied_factor:.1f} lb/MWh")
         else:
              st.caption(f"{results['grid_consumption']:,.0f} MWh (Grid) * {results['egrid_factor_lb']:.1f} lb/MWh")
     with c3:
