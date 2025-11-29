@@ -213,7 +213,7 @@ if "region_selector" not in st.session_state:
 
 # Header
 st.image("logo.png", width=600)
-st.markdown("<h2 style='color: #285477;'>8760 CE Simulator</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='color: #285477;'>8760 CE Simulator (v2.0)</h2>", unsafe_allow_html=True)
 st.markdown("---")
 
 # Callbacks
@@ -494,47 +494,53 @@ with st.sidebar:
                             }
                             iso_code = region_to_iso.get(region, region).strip()
                             
-                            st.info(f"🔍 Filtering for ISO code: '{iso_code}'")
+                            st.info(f"🔍 STEP 1: Filtering for ISO code: '{iso_code}'")
+
+                            # Load the combined file using absolute path
+                            current_dir = os.path.dirname(os.path.abspath(__file__))
+                            file_path = os.path.join(current_dir, "combinedISOCarbon2024.csv")
+                            
+                            combined_em_df = None
+                            if os.path.exists(file_path):
+                                combined_em_df = pd.read_csv(file_path)
+                                st.info(f"✅ STEP 2: Loaded CSV from {file_path}")
+                                st.info(f"   Rows: {len(combined_em_df)}")
+                                
+                                # Show unique ISO codes in the file
+                                unique_isos = combined_em_df['ISO_Code'].unique()
+                                st.info(f"📋 STEP 3: Found ISOs in file: {', '.join(map(str, unique_isos))}")
+                            else:
+                                st.error(f"❌ File not found at: {file_path}")
+                                raise FileNotFoundError(f"combinedISOCarbon2024.csv not found at {file_path}")
 
                             # 1. Filter and Clean
                             combined_em_df['ISO_Code'] = combined_em_df['ISO_Code'].astype(str).str.strip()
                             region_emissions_df = combined_em_df[combined_em_df['ISO_Code'] == iso_code].copy()
                             
+                            st.info(f"🎯 STEP 4: After filtering for '{iso_code}', found {len(region_emissions_df)} rows")
+                            
                             if not region_emissions_df.empty and 'carbon_intensity_g_kwh' in region_emissions_df.columns:
+                                st.info(f"✅ STEP 5: Data valid, starting normalization...")
+                                
                                 # 2. Parse Dates and Remove Leap Day
                                 region_emissions_df['period'] = pd.to_datetime(region_emissions_df['period'])
                                 
                                 # Filter out Feb 29th (Leap Day)
+                                before_leap_removal = len(region_emissions_df)
                                 region_emissions_df = region_emissions_df[
                                     ~((region_emissions_df['period'].dt.month == 2) & (region_emissions_df['period'].dt.day == 29))
                                 ]
+                                after_leap_removal = len(region_emissions_df)
+                                st.info(f"📅 STEP 6: Removed {before_leap_removal - after_leap_removal} leap day rows. Now {after_leap_removal} rows")
                                 
                                 # 3. Reindex to Standard 8760 Hours (2023 base year for simulation)
-                                # Create a standard 8760-hour index
-                                standard_index = pd.date_range(start="2023-01-01", periods=8760, freq="h")
-                                
-                                # Set index to period (ignoring year for alignment if needed, but here we assume 2024 data mapping to 2023 simulation)
-                                # Since source is 2024 and target is 2023, we map by position (0-8759) after removing leap day
-                                # But to be safe with gaps, we should reindex.
                                 # Strategy: Sort by time, reset index, and reindex to 0-8759
-                                
                                 region_emissions_df = region_emissions_df.sort_values('period')
-                                
-                                # Create a full series indexed 0 to 8759
-                                # We use the 'period' column to establish relative time if possible, but simplest robust way is:
-                                # 1. Sort by time
-                                # 2. Set index to a standard 2024 non-leap range? No, source is 2024.
-                                # Better: Just take the values, reindex to 0..N, and ffill/bfill to 8760.
-                                
-                                # Let's use a time-based reindex to handle missing hours correctly
-                                # Source is 2024. We removed Feb 29. So we have 365 days.
-                                # We construct a 2024 non-leap index (treating it as 2023 structure)
                                 
                                 # Extract emissions series
                                 emissions_series = region_emissions_df.set_index('period')['carbon_intensity_g_kwh']
                                 
                                 # Create a target index for 2024 EXCLUDING Feb 29
-                                # This represents the "expected" timestamps in the source file
                                 full_2024_range = pd.date_range(start="2024-01-01", end="2024-12-31 23:00", freq="h")
                                 full_2024_non_leap = full_2024_range[~((full_2024_range.month == 2) & (full_2024_range.day == 29))]
                                 
@@ -542,26 +548,56 @@ with st.sidebar:
                                 emissions_series = emissions_series.reindex(full_2024_non_leap)
                                 
                                 # 4. Infer Missing Data
-                                # Forward fill then backward fill
+                                nan_count_before = emissions_series.isna().sum()
                                 emissions_series = emissions_series.ffill().bfill()
+                                nan_count_after = emissions_series.isna().sum()
+                                st.info(f"🔧 STEP 7: Filled {nan_count_before} missing values. Remaining NaN: {nan_count_after}")
                                 
                                 # 5. Convert and Finalize
                                 raw_emissions = emissions_series.values * 2.20462 # Convert to lb/MWh
                                 
                                 # Ensure exactly 8760 length
+                                st.info(f"📏 STEP 8: Final data length: {len(raw_emissions)} (expected 8760)")
+                                
                                 if len(raw_emissions) == 8760:
                                     hourly_emissions = pd.Series(raw_emissions) # 0-based index automatically
-                                    st.success(f"✅ Loaded and normalized hourly emissions for {region} (ISO: {iso_code})")
+                                    st.success(f"✅ STEP 9: SUCCESS! Loaded and normalized hourly emissions for {region} (ISO: {iso_code})")
                                     st.info(f"📊 Data Check: First={hourly_emissions.iloc[0]:.1f}, Last={hourly_emissions.iloc[-1]:.1f}, Mean={hourly_emissions.mean():.1f}")
                                 else:
-                                    # Fallback if something went wrong with length (shouldn't happen with reindex)
-                                    st.error(f"❌ Normalized data length mismatch: {len(raw_emissions)} rows. Expected 8760.")
+                                    # Fallback if something went wrong with length
+                                    st.error(f"❌ STEP 9: FAILED - Normalized data length mismatch: {len(raw_emissions)} rows. Expected 8760.")
                                     hourly_emissions = None
 
                             else:
-                                st.warning(f"⚠️ Could not find emissions data for {region} (ISO: {iso_code}) in combined file. Using eGRID default.")
+                                if region_emissions_df.empty:
+                                    st.error(f"❌ STEP 5: FAILED - No data found for ISO '{iso_code}' after filtering!")
+                                else:
+                                    st.error(f"❌ STEP 5: FAILED - Missing 'carbon_intensity_g_kwh' column!")
+                                st.warning(f"⚠️ Could not find emissions data for {region} (ISO: {iso_code}). Using eGRID default.")
+                                
+
+
                     except Exception as e:
-                        st.warning(f"Could not load emissions file: {e}")
+                        st.error(f"❌ CRITICAL ERROR while loading emissions data: {str(e)}")
+                        st.error(f"Exception type: {type(e).__name__}")
+                        import traceback
+                        st.code(traceback.format_exc())
+                        hourly_emissions = None
+
+                    # CRITICAL VALIDATION: Stop if hourly was requested but not available
+                    if emissions_logic == "hourly" and hourly_emissions is None:
+                        st.error("🛑 **ANALYSIS STOPPED**")
+                        st.error(f"**You selected 'Hourly (CSV)' but hourly emissions data could not be loaded for {region}.**")
+                        st.error("**Possible causes:**")
+                        st.error("1. The `combinedISOCarbon2024.csv` file is missing or corrupted")
+                        st.error(f"2. No data exists for ISO code '{region}' in the file")
+                        st.error("3. The file format is incorrect (missing required columns)")
+                        st.error("")
+                        st.error("**What to do:**")
+                        st.error("- Check that `combinedISOCarbon2024.csv` exists in the project directory")
+                        st.error("- Verify the file contains data for your selected region")
+                        st.error("- OR switch to 'Annual eGRID' emissions source to continue")
+                        st.stop()  # Hard stop - don't continue with analysis
 
                     # Calculate Metrics
                     results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions, emissions_logic=emissions_logic)
