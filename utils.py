@@ -507,7 +507,7 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         "location_based_emissions_mt": location_based_emissions_mt,
         "mw_match_productivity": mw_match_productivity,
         "implied_annual_emissions_factor_lb_mwh": implied_annual_emissions_factor_lb_mwh,
-        "implied_annual_avoided_emissions_factor_lb_mwh": implied_annual_avoided_emissions_factor_lb_mwh,
+        "implied_avoided_factor_lb_mwh": implied_annual_avoided_emissions_factor_lb_mwh,
         "total_rec_cost": total_rec_cost,
         "total_rec_revenue": total_rec_revenue,
         "net_rec_cost": net_rec_cost,
