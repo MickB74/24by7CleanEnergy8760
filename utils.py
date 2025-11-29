@@ -353,7 +353,13 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     grid_emissions_hourly_mt = None
     avoided_emissions_hourly_mt = None
     if hourly_emissions_lb_mwh is not None and len(hourly_emissions_lb_mwh) == len(df):
-        df['Emissions_Factor_Hourly_lb_MWh'] = hourly_emissions_lb_mwh
+        # Use .values to ensure we ignore any index mismatch between df and the emissions series
+        # This is critical because emissions might come from a different source with different index
+        if hasattr(hourly_emissions_lb_mwh, 'values'):
+            df['Emissions_Factor_Hourly_lb_MWh'] = hourly_emissions_lb_mwh.values
+        else:
+            df['Emissions_Factor_Hourly_lb_MWh'] = hourly_emissions_lb_mwh
+            
         df['Hourly_Grid_Emissions_Hourly_lb'] = df['Grid_Consumption'] * df['Emissions_Factor_Hourly_lb_MWh']
         grid_emissions_hourly_mt = df['Hourly_Grid_Emissions_Hourly_lb'].sum() * lb_to_mt
         

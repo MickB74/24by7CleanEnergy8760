@@ -481,35 +481,85 @@ with st.sidebar:
                     # Load Hourly Emissions Data if available
                     hourly_emissions = None
                     try:
-                        emissions_file = None
-                        if region == "ERCOT":
-                            emissions_file = "intensity_ERCO_2024.csv"
-                        elif region == "PJM":
-                            emissions_file = "intensity_PJM_2024.csv"
-                        elif region == "MISO":
-                            emissions_file = "intensity_MISO_2024.csv"
-                        else:
-                             # Debug
-                             # st.toast(f"Region is '{region}', skipping ERCOT file.", icon="ℹ️")
-                             pass
+                        if emissions_logic == "hourly":
+                            # Map region to ISO Code
+                            region_to_iso = {
+                                "ERCOT": "ERCOT",
+                                "PJM": "PJM",
+                                "MISO": "MISO",
+                                "CAISO": "CAISO",
+                                "NYISO": "NYISO",
+                                "ISO-NE": "ISO-NE",
+                                "SPP": "SPP"
+                            }
+                            iso_code = region_to_iso.get(region, region).strip()
                             
-                        if emissions_file:
-                            if os.path.exists(emissions_file):
-                                em_df = pd.read_csv(emissions_file)
-                                if 'carbon_intensity_g_kwh' in em_df.columns:
-                                    # Convert g/kWh to lb/MWh
-                                    # 1 g/kWh = 1 kg/MWh
-                                    # 1 kg = 2.20462 lb
-                                    raw_emissions = em_df['carbon_intensity_g_kwh'] * 2.20462
-                                    
-                                    # Align with df length
-                                    if len(raw_emissions) >= len(df):
-                                        hourly_emissions = raw_emissions.iloc[:len(df)]
-                                        st.toast(f"Loaded hourly emissions from {emissions_file} (aligned to {len(df)} hours)", icon="🌍")
-                                    else:
-                                        st.warning(f"⚠️ Emissions file has {len(raw_emissions)} rows, but simulation has {len(df)}. Using eGRID default.")
+                            st.info(f"🔍 Filtering for ISO code: '{iso_code}'")
+
+                            # 1. Filter and Clean
+                            combined_em_df['ISO_Code'] = combined_em_df['ISO_Code'].astype(str).str.strip()
+                            region_emissions_df = combined_em_df[combined_em_df['ISO_Code'] == iso_code].copy()
+                            
+                            if not region_emissions_df.empty and 'carbon_intensity_g_kwh' in region_emissions_df.columns:
+                                # 2. Parse Dates and Remove Leap Day
+                                region_emissions_df['period'] = pd.to_datetime(region_emissions_df['period'])
+                                
+                                # Filter out Feb 29th (Leap Day)
+                                region_emissions_df = region_emissions_df[
+                                    ~((region_emissions_df['period'].dt.month == 2) & (region_emissions_df['period'].dt.day == 29))
+                                ]
+                                
+                                # 3. Reindex to Standard 8760 Hours (2023 base year for simulation)
+                                # Create a standard 8760-hour index
+                                standard_index = pd.date_range(start="2023-01-01", periods=8760, freq="h")
+                                
+                                # Set index to period (ignoring year for alignment if needed, but here we assume 2024 data mapping to 2023 simulation)
+                                # Since source is 2024 and target is 2023, we map by position (0-8759) after removing leap day
+                                # But to be safe with gaps, we should reindex.
+                                # Strategy: Sort by time, reset index, and reindex to 0-8759
+                                
+                                region_emissions_df = region_emissions_df.sort_values('period')
+                                
+                                # Create a full series indexed 0 to 8759
+                                # We use the 'period' column to establish relative time if possible, but simplest robust way is:
+                                # 1. Sort by time
+                                # 2. Set index to a standard 2024 non-leap range? No, source is 2024.
+                                # Better: Just take the values, reindex to 0..N, and ffill/bfill to 8760.
+                                
+                                # Let's use a time-based reindex to handle missing hours correctly
+                                # Source is 2024. We removed Feb 29. So we have 365 days.
+                                # We construct a 2024 non-leap index (treating it as 2023 structure)
+                                
+                                # Extract emissions series
+                                emissions_series = region_emissions_df.set_index('period')['carbon_intensity_g_kwh']
+                                
+                                # Create a target index for 2024 EXCLUDING Feb 29
+                                # This represents the "expected" timestamps in the source file
+                                full_2024_range = pd.date_range(start="2024-01-01", end="2024-12-31 23:00", freq="h")
+                                full_2024_non_leap = full_2024_range[~((full_2024_range.month == 2) & (full_2024_range.day == 29))]
+                                
+                                # Reindex source data to this expected range (fills gaps with NaN)
+                                emissions_series = emissions_series.reindex(full_2024_non_leap)
+                                
+                                # 4. Infer Missing Data
+                                # Forward fill then backward fill
+                                emissions_series = emissions_series.ffill().bfill()
+                                
+                                # 5. Convert and Finalize
+                                raw_emissions = emissions_series.values * 2.20462 # Convert to lb/MWh
+                                
+                                # Ensure exactly 8760 length
+                                if len(raw_emissions) == 8760:
+                                    hourly_emissions = pd.Series(raw_emissions) # 0-based index automatically
+                                    st.success(f"✅ Loaded and normalized hourly emissions for {region} (ISO: {iso_code})")
+                                    st.info(f"📊 Data Check: First={hourly_emissions.iloc[0]:.1f}, Last={hourly_emissions.iloc[-1]:.1f}, Mean={hourly_emissions.mean():.1f}")
+                                else:
+                                    # Fallback if something went wrong with length (shouldn't happen with reindex)
+                                    st.error(f"❌ Normalized data length mismatch: {len(raw_emissions)} rows. Expected 8760.")
+                                    hourly_emissions = None
+
                             else:
-                                st.toast(f"File {emissions_file} not found!", icon="❌")
+                                st.warning(f"⚠️ Could not find emissions data for {region} (ISO: {iso_code}) in combined file. Using eGRID default.")
                     except Exception as e:
                         st.warning(f"Could not load emissions file: {e}")
 
