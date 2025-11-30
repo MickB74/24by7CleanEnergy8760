@@ -828,7 +828,7 @@ with st.sidebar:
                         st.stop()  # Hard stop - don't continue with analysis
 
                     # Calculate Metrics
-                    results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions, emissions_logic=emissions_logic)
+                    results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions, emissions_logic=emissions_logic, use_rec_scaling=use_rec_scaling)
                     
                     if emissions_logic == "hourly" and results.get('grid_emissions_hourly_mt') is None:
                         st.toast(f"Hourly data unavailable for {region}. Using eGRID.", icon="⚠️")
