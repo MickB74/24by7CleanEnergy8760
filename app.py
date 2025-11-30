@@ -1365,6 +1365,18 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     monthly_avg_gen = df.groupby(df['timestamp'].dt.month_name())['Total_Renewable_Gen'].mean()
     worst_month = monthly_avg_gen.idxmin()
     insights.append(f"**Seasonal low:** Lowest average renewable generation observed in {worst_month}")
+    
+    # 4. REC Financial Position
+    total_rec_revenue = results.get('total_rec_revenue', 0)
+    total_rec_cost = results.get('total_rec_cost', 0)
+    net_rec = total_rec_revenue + total_rec_cost  # Cost is negative
+    
+    if net_rec > 0:
+        insights.append(f"**REC financials:** Net revenue of ${abs(net_rec):,.0f} from selling excess RECs")
+    elif net_rec < 0:
+        insights.append(f"**REC financials:** Net cost of ${abs(net_rec):,.0f} to purchase RECs for deficit hours")
+    else:
+        insights.append(f"**REC financials:** Perfectly balanced - no net cost or revenue")
 
     st.subheader("Auto-Insights")
     st.caption(f"Debug: Solar Cap={st.session_state.get('solar_capacity')}, Wind Cap={st.session_state.get('wind_capacity')}")
