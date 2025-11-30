@@ -341,13 +341,20 @@ def reset_values():
     st.session_state.analysis_complete = False
 
 def randomize_scenario():
+    # Randomize Region
+    regions = ["ERCOT", "PJM", "CAISO", "MISO", "SPP", "NYISO", "ISO-NE"]
+    st.session_state.region_selector = random.choice(regions)
+    
     # Randomize Capacities (only Solar and Wind)
     st.session_state.solar_capacity = float(random.randint(10, 500))
     st.session_state.wind_capacity = float(random.randint(10, 500))
     
-    # Randomize Loads
+    # Randomize Loads (only Data Center and Office)
     for b_type in building_types:
-        st.session_state[f"load_{b_type}"] = random.randint(0, 20) * 25000
+        if b_type in ["Data Center", "Office"]:
+            st.session_state[f"load_{b_type}"] = random.randint(0, 20) * 25000
+        else:
+            st.session_state[f"load_{b_type}"] = 0
 
 # Sidebar Inputs
 with st.sidebar:
