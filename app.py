@@ -319,8 +319,13 @@ def reset_values():
     st.session_state.nuclear_capacity = 0.0
     st.session_state.geothermal_capacity = 0.0
     st.session_state.hydro_capacity = 0.0
+    st.session_state.battery_capacity = 0.0
     for b_type in building_types:
         st.session_state[f"load_{b_type}"] = 0
+    
+    # Clear analysis results
+    st.session_state.portfolio_data = None
+    st.session_state.analysis_complete = False
 
 def randomize_scenario():
     # Randomize Capacities (only Solar and Wind)
