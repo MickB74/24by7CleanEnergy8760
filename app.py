@@ -91,16 +91,37 @@ if st.session_state.dark_mode:
             /* Buttons */
             button[kind="primary"], [data-testid="baseButton-primary"] {
                 background-color: #00D9FF !important;
-                color: #0E1117 !important;
+                color: #002147 !important;
                 border: none !important;
                 border-radius: 6px !important;
                 padding: 0.75rem 1.5rem !important;
                 font-weight: 600 !important;
                 width: 100%;
             }
+            button[kind="primary"] *, [data-testid="baseButton-primary"] * {
+                color: #002147 !important;
+            }
+            button[kind="primary"] p, [data-testid="baseButton-primary"] p,
+            button[kind="primary"] div, [data-testid="baseButton-primary"] div,
+            button[kind="primary"] span, [data-testid="baseButton-primary"] span {
+                color: #002147 !important;
+            }
+            
+            /* Specific fix for Form Submit Button */
+            [data-testid="stFormSubmitButton"] button {
+                background-color: #00D9FF !important;
+                color: #002147 !important;
+            }
+            [data-testid="stFormSubmitButton"] button * {
+                color: #002147 !important;
+            }
+
             button[kind="primary"]:hover, [data-testid="baseButton-primary"]:hover {
                 background-color: #00B8D9 !important;
-                color: #0E1117 !important;
+                color: #002147 !important;
+            }
+            button[kind="primary"]:hover *, [data-testid="baseButton-primary"]:hover * {
+                color: #002147 !important;
             }
 
             button[kind="secondary"], [data-testid="baseButton-secondary"] {
@@ -118,6 +139,48 @@ if st.session_state.dark_mode:
                 border-radius: 6px;
                 background-color: #262730 !important;
                 color: #FAFAFA !important;
+            }
+            /* Specific fix for Number Input Controls (plus/minus buttons) */
+            .stNumberInput > div > div {
+                background-color: #262730 !important;
+                color: #FAFAFA !important;
+            }
+            .stNumberInput button {
+                color: #FAFAFA !important;
+            }
+            
+            /* Fix Selectbox Arrow Visibility */
+            .stSelectbox svg {
+                fill: #FAFAFA !important;
+            }
+            
+            /* File Uploader */
+            [data-testid="stFileUploader"] {
+                background-color: #262730;
+                border-radius: 8px;
+                padding: 1rem;
+            }
+            [data-testid="stFileUploader"] section {
+                background-color: #262730 !important;
+            }
+            [data-testid="stFileUploader"] span, [data-testid="stFileUploader"] small {
+                color: #FAFAFA !important;
+            }
+            
+            /* Logo Inversion for Dark Mode - REMOVED, using dedicated image */
+            /* [data-testid="stImage"] img {
+                filter: brightness(0) invert(1);
+            } */
+            
+            /* Make st.container(border=True) visible in dark sidebar */
+            section[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] > div {
+                border: 1px solid rgba(250, 250, 250, 0.2) !important;
+                background-color: rgba(255, 255, 255, 0.05) !important;
+            }
+
+            /* Title Bar (Header) - Black in Dark Mode */
+            header[data-testid="stHeader"] {
+                background-color: #000000 !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -194,6 +257,37 @@ else:
 """, unsafe_allow_html=True)
 
 # Initialize Session State
+# Define custom black theme for charts
+def dark_black_theme():
+    return {
+        "config": {
+            "background": "#000000",
+            "title": {
+                "color": "#FFFFFF"
+            },
+            "axis": {
+                "titleColor": "#FFFFFF",
+                "labelColor": "#FFFFFF",
+                "domainColor": "#FFFFFF",
+                "gridColor": "#333333"
+            },
+            "legend": {
+                "titleColor": "#FFFFFF",
+                "labelColor": "#FFFFFF"
+            },
+            "view": {
+                "stroke": "transparent"
+            }
+        }
+    }
+
+alt.themes.register("dark_black", dark_black_theme)
+
+if st.session_state.dark_mode:
+    alt.themes.enable("dark_black")
+else:
+    alt.themes.enable("default")
+
 if 'portfolio_data' not in st.session_state:
     st.session_state.portfolio_data = None
 if 'analysis_complete' not in st.session_state:
@@ -212,8 +306,10 @@ if "region_selector" not in st.session_state:
     st.session_state.region_selector = "ERCOT"
 
 # Header
-st.image("logo.png", width=600)
-st.markdown("<h2 style='color: #285477;'>8760 CE Simulator (v2.0)</h2>", unsafe_allow_html=True)
+logo_file = "logo_dark.png" if st.session_state.dark_mode else "logo.png"
+st.image(logo_file, width=600)
+header_color = "#FAFAFA" if st.session_state.dark_mode else "#285477"
+st.markdown(f"<h2 style='color: {header_color};'>8760 CE Simulator (v2.0)</h2>", unsafe_allow_html=True)
 st.markdown("---")
 
 # Callbacks
@@ -237,94 +333,110 @@ def randomize_scenario():
 
 # Sidebar Inputs
 with st.sidebar:
-    st.subheader("Restore Session")
+    st.toggle("Dark Mode", key="dark_mode")
+    st.markdown("---")
     
-    def restore_session_callback():
-        uploaded_file = st.session_state.restore_uploader
-        if uploaded_file is not None:
-            try:
-                import zipfile
-                import io
-                import json
-                
-                with zipfile.ZipFile(io.BytesIO(uploaded_file.read())) as z:
-                    # Find JSON and CSV
-                    json_files = [f for f in z.namelist() if f.endswith('_summary.json')]
-                    csv_files = [f for f in z.namelist() if f.endswith('_8760_data.csv')]
+    with st.container(border=True):
+        st.subheader("Restore Session")
+        
+        def restore_session_callback():
+            uploaded_file = st.session_state.restore_uploader
+            if uploaded_file is not None:
+                try:
+                    import zipfile
+                    import io
+                    import json
                     
-                    if json_files and csv_files:
-                        # 1. Restore Inputs from JSON
-                        with z.open(json_files[0]) as f:
-                            summary_data = json.load(f)
-                            inputs = summary_data.get('inputs', {})
-                            
-                            if inputs:
-                                # Update session state with restored inputs
-                                st.session_state.solar_capacity = inputs.get('solar_capacity', 0.0)
-                                st.session_state.wind_capacity = inputs.get('wind_capacity', 0.0)
-                                st.session_state.nuclear_capacity = inputs.get('nuclear_capacity', 0.0)
-                                st.session_state.geothermal_capacity = inputs.get('geothermal_capacity', 0.0)
-                                st.session_state.hydro_capacity = inputs.get('hydro_capacity', 0.0)
-                                st.session_state.battery_capacity = inputs.get('battery_capacity', 0.0)
-                                st.session_state.region_selector = inputs.get('region', "ERCOT")
+                    with zipfile.ZipFile(io.BytesIO(uploaded_file.read())) as z:
+                        # Find JSON and CSV
+                        json_files = [f for f in z.namelist() if f.endswith('_summary.json')]
+                        csv_files = [f for f in z.namelist() if f.endswith('_8760_data.csv')]
+                        
+                        if json_files and csv_files:
+                            # 1. Restore Inputs from JSON
+                            with z.open(json_files[0]) as f:
+                                summary_data = json.load(f)
+                                inputs = summary_data.get('inputs', {})
                                 
-                                # Restore loads
-                                for b_type in building_types:
-                                    load_key = f"load_{b_type}"
-                                    if load_key in inputs:
-                                        st.session_state[load_key] = inputs[load_key]
-                                
-                                st.toast("✓ Settings restored", icon="✅")
-                            else:
-                                st.toast("⚠ No input settings found in JSON (older export?)", icon="⚠️")
+                                if inputs:
+                                    # Update session state with restored inputs
+                                    st.session_state.solar_capacity = inputs.get('solar_capacity', 0.0)
+                                    st.session_state.wind_capacity = inputs.get('wind_capacity', 0.0)
+                                    st.session_state.nuclear_capacity = inputs.get('nuclear_capacity', 0.0)
+                                    st.session_state.geothermal_capacity = inputs.get('geothermal_capacity', 0.0)
+                                    st.session_state.hydro_capacity = inputs.get('hydro_capacity', 0.0)
+                                    st.session_state.battery_capacity = inputs.get('battery_capacity', 0.0)
+                                    st.session_state.region_selector = inputs.get('region', "ERCOT")
+                                    
+                                    # Restore loads
+                                    for b_type in building_types:
+                                        load_key = f"load_{b_type}"
+                                        if load_key in inputs:
+                                            st.session_state[load_key] = inputs[load_key]
+                                    
+                                    st.toast("✓ Settings restored", icon="✅")
+                                else:
+                                    st.toast("⚠ No input settings found in JSON (older export?)", icon="⚠️")
 
-                        # 2. Restore Data from CSV
-                        with z.open(csv_files[0]) as f:
-                            restored_df = pd.read_csv(f)
-                            # Clean columns
-                            restored_df.columns = restored_df.columns.str.strip()
-                            
-                            # Convert timestamp to datetime
-                            if 'timestamp' in restored_df.columns:
-                                restored_df['timestamp'] = pd.to_datetime(restored_df['timestamp'])
+                            # 2. Restore Data from CSV
+                            with z.open(csv_files[0]) as f:
+                                restored_df = pd.read_csv(f)
+                                # Clean columns
+                                restored_df.columns = restored_df.columns.str.strip()
                                 
-                            # Reconstruct results dict if needed, or use the one from JSON
-                            restored_results = summary_data.get('results', {})
-                            
-                            st.session_state.portfolio_data = {
-                                "results": restored_results,
-                                "df": restored_df,
-                                "region": st.session_state.get('region_selector', "ERCOT"),
-                                "solar_capacity": st.session_state.get('solar_capacity', 0.0),
-                                "wind_capacity": st.session_state.get('wind_capacity', 0.0),
-                                "nuclear_capacity": st.session_state.get('nuclear_capacity', 0.0),
-                                "geothermal_capacity": st.session_state.get('geothermal_capacity', 0.0),
-                                "hydro_capacity": st.session_state.get('hydro_capacity', 0.0)
-                            }
-                            st.session_state.analysis_complete = True
-                            st.toast("✓ Data restored!", icon="✅")
-                    else:
-                        st.error("❌ Invalid ZIP format. Must contain _summary.json and _8760_data.csv")
-            except Exception as e:
-                st.error(f"❌ Error restoring session: {str(e)}")
+                                # Convert timestamp to datetime
+                                if 'timestamp' in restored_df.columns:
+                                    restored_df['timestamp'] = pd.to_datetime(restored_df['timestamp'])
+                                    
+                                # Reconstruct results dict if needed, or use the one from JSON
+                                restored_results = summary_data.get('results', {})
+                                
+                                st.session_state.portfolio_data = {
+                                    "results": restored_results,
+                                    "df": restored_df,
+                                    "region": st.session_state.get('region_selector', "ERCOT"),
+                                    "solar_capacity": st.session_state.get('solar_capacity', 0.0),
+                                    "wind_capacity": st.session_state.get('wind_capacity', 0.0),
+                                    "nuclear_capacity": st.session_state.get('nuclear_capacity', 0.0),
+                                    "geothermal_capacity": st.session_state.get('geothermal_capacity', 0.0),
+                                    "hydro_capacity": st.session_state.get('hydro_capacity', 0.0)
+                                }
+                                st.session_state.analysis_complete = True
+                                st.toast("✓ Data restored!", icon="✅")
+                        else:
+                            st.error("❌ Invalid ZIP format. Must contain _summary.json and _8760_data.csv")
+                except Exception as e:
+                    st.error(f"❌ Error restoring session: {str(e)}")
 
-    st.file_uploader("Upload Exported ZIP", type=['zip'], key="restore_uploader", on_change=restore_session_callback)
+        st.file_uploader("Upload Exported ZIP", type=['zip'], key="restore_uploader", on_change=restore_session_callback)
             
     st.markdown("---")
     st.subheader("Configuration")
 
     # Control Buttons with Custom Colors
-    st.markdown("""
+    # Control Buttons with Custom Colors
+    btn_bg = "#00D9FF" if st.session_state.dark_mode else "#285477"
+    btn_text = "#002147" if st.session_state.dark_mode else "white"
+    
+    st.markdown(f"""
         <style>
         /* Random and Reset All buttons */
-        button[key="random_btn"], button[key="reset_btn"] {
-            background-color: #285477 !important;
-            color: white !important;
-            border: none !important;
-        }
-        button[key="random_btn"]:hover, button[key="reset_btn"]:hover {
-            background-color: #1e3f5a !important;
-        }
+        section[data-testid="stSidebar"] div[data-testid="column"] button {{
+             background-color: {btn_bg} !important;
+             color: {btn_text} !important;
+             border: none !important;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="column"] button * {{
+             color: {btn_text} !important;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="column"] button:hover {{
+             opacity: 0.8 !important;
+             background-color: {btn_bg} !important;
+             color: {btn_text} !important;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="column"] button:hover * {{
+             color: {btn_text} !important;
+        }}
         </style>
     """, unsafe_allow_html=True)
     
@@ -419,7 +531,7 @@ with st.sidebar:
                 )
                 load_inputs[b_type] = val
 
-        st.markdown("###2. Renewables")
+        st.markdown("### 2. Renewables")
         st.caption("Define capacity (MW) for generation assets.")
         solar_capacity = st.number_input("Solar (MW)", min_value=0.0, step=10.0, key="solar_capacity")
         wind_capacity = st.number_input("Wind (MW)", min_value=0.0, step=10.0, key="wind_capacity")
@@ -870,7 +982,10 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     
     # Define colors
     domain = ['Load', 'Generation']
-    range_ = ['#FF00FF', '#000000']
+    if st.session_state.dark_mode:
+        range_ = ['#FF00FF', '#00D9FF']
+    else:
+        range_ = ['#FF00FF', '#000000']
 
     line_load = base.mark_line(strokeWidth=1).transform_calculate(
             Source="'Load'"
