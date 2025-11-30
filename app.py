@@ -387,26 +387,131 @@ with st.sidebar:
                                 # Convert timestamp to datetime
                                 if 'timestamp' in restored_df.columns:
                                     restored_df['timestamp'] = pd.to_datetime(restored_df['timestamp'])
-                                    
-                                # Reconstruct results dict if needed, or use the one from JSON
-                                restored_results = summary_data.get('results', {})
-                                
-                                st.session_state.portfolio_data = {
-                                    "results": restored_results,
-                                    "df": restored_df,
-                                    "region": st.session_state.get('region_selector', "ERCOT"),
-                                    "solar_capacity": st.session_state.get('solar_capacity', 0.0),
-                                    "wind_capacity": st.session_state.get('wind_capacity', 0.0),
-                                    "nuclear_capacity": st.session_state.get('nuclear_capacity', 0.0),
-                                    "geothermal_capacity": st.session_state.get('geothermal_capacity', 0.0),
-                                    "hydro_capacity": st.session_state.get('hydro_capacity', 0.0)
+                                elif 'Timestamp' in restored_df.columns:
+                                    restored_df['timestamp'] = pd.to_datetime(restored_df['Timestamp'])
+
+                                # Map exported column names back to internal names
+                                reverse_column_map = {
+                                    'Timestamp': 'timestamp',
+                                    'Load (MWh)': 'Load_Actual',
+                                    'Solar Generation (MWh)': 'Solar_Gen',
+                                    'Wind Generation (MWh)': 'Wind_Gen',
+                                    'Nuclear Generation (MWh)': 'Nuclear_Gen',
+                                    'Geothermal Generation (MWh)': 'Geothermal_Gen',
+                                    'Hydro Generation (MWh)': 'Hydro_Gen',
+                                    'Total Renewable Generation (MWh)': 'Total_Renewable_Gen',
+                                    'Battery Charge (MWh)': 'Battery_Charge',
+                                    'Battery Discharge (MWh)': 'Battery_Discharge',
+                                    'Battery State of Charge (MWh)': 'Battery_SOC',
+                                    'Effective Clean Energy (MWh)': 'Effective_Gen',
+                                    'Grid Consumption (MWh)': 'Grid_Consumption',
+                                    'Net Load (MWh)': 'Net_Load_MWh',
+                                    'REC Price ($/MWh)': 'REC_Price_USD',
+                                    'REC Cost ($)': 'REC_Cost',
+                                    'REC Revenue ($)': 'REC_Revenue',
+                                    'Grid Emissions Factor (lb/MWh)': 'Emissions_Factor_lb_MWh',
+                                    'Grid Emissions (lb)': 'Hourly_Grid_Emissions_lb',
+                                    'Avoided Emissions (lb)': 'Hourly_Avoided_Emissions_lb',
+                                    'Hourly CFE Ratio': 'Hourly_CFE_Ratio',
+                                    'Hourly Renewable Ratio': 'Hourly_Renewable_Ratio',
+                                    'Solar Capacity Factor (%)': 'Solar Capacity Factor',
+                                    'Wind Capacity Factor (%)': 'Wind Capacity Factor',
+                                    'Base Load Profile (MWh)': 'Load Profile'
                                 }
-                                st.session_state.analysis_complete = True
-                                st.toast("✓ Data restored!", icon="✅")
-                        else:
-                            st.error("❌ Invalid ZIP format. Must contain _summary.json and _8760_data.csv")
-                except Exception as e:
-                    st.error(f"❌ Error restoring session: {str(e)}")
+                                restored_df = restored_df.rename(columns=reverse_column_map)
+                                
+                                # Fallback calculation for Hourly_CFE_Ratio if missing (older exports)
+                                if 'Hourly_CFE_Ratio' not in restored_df.columns and 'Load_Actual' in restored_df.columns and 'Effective_Gen' in restored_df.columns:
+                                    # Recalculate CFE Ratio
+                                    # Note: Effective_Gen should already be capped at Load for CFE purposes if it was calculated correctly before export
+                                    # But to be safe, let's just use the ratio logic
+                                    # Actually, Effective_Gen in utils is Total_Renewable_Gen_With_Battery
+                                    # Hourly_CFE_MWh is min(Effective_Gen, Load)
+                                    # So Ratio = min(Effective_Gen, Load) / Load
+                                    
+                                    # We need to be careful. Let's try to reconstruct it.
+                                    hourly_cfe_mwh = np.minimum(restored_df['Effective_Gen'], restored_df['Load_Actual'])
+                                    restored_df['Hourly_CFE_Ratio'] = np.where(restored_df['Load_Actual'] > 0, hourly_cfe_mwh / restored_df['Load_Actual'], 1.0)
+                                    
+                                    # Reconstruct results dict if needed, or use the one from JSON
+                                    restored_results = summary_data.get('results', {})
+                                    
+                                    st.session_state.portfolio_data = {
+                                        "results": restored_results,
+                                        "df": restored_df,
+                                        "region": st.session_state.get('region_selector', "ERCOT"),
+                                        "solar_capacity": st.session_state.get('solar_capacity', 0.0),
+                                        "wind_capacity": st.session_state.get('wind_capacity', 0.0),
+                                        "nuclear_capacity": st.session_state.get('nuclear_capacity', 0.0),
+                                        "geothermal_capacity": st.session_state.get('geothermal_capacity', 0.0),
+                                        "hydro_capacity": st.session_state.get('hydro_capacity', 0.0)
+                                    }
+                                    st.session_state.analysis_complete = True
+                                    st.toast("✓ Data restored!", icon="✅")
+                            else:
+                                st.error("❌ Invalid ZIP format. Must contain _summary.json and _8760_data.csv")
+                    except Exception as e:
+                        st.warning(f"⚠️ CSV Restore failed: {str(e)}. Attempting to regenerate from JSON inputs...")
+                        
+                        # Fallback: Regenerate from JSON inputs
+                        try:
+                            # 1. Re-run Generation
+                            # Re-construct portfolio list from session state (which was just restored)
+                            portfolio_list = []
+                            for b_type in building_types:
+                                val = st.session_state.get(f"load_{b_type}", 0)
+                                if val > 0:
+                                    portfolio_list.append({'type': b_type, 'annual_mwh': val})
+                            
+                            region = st.session_state.get('region_selector', "ERCOT")
+                            
+                            # Note: If original used "Upload File", we might not have the file.
+                            # But we can try to use the inputs we have.
+                            
+                            df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region, seed=42)
+                            
+                            # 2. Re-run Metrics
+                            solar_capacity = st.session_state.get('solar_capacity', 0.0)
+                            wind_capacity = st.session_state.get('wind_capacity', 0.0)
+                            nuclear_capacity = st.session_state.get('nuclear_capacity', 0.0)
+                            geothermal_capacity = st.session_state.get('geothermal_capacity', 0.0)
+                            hydro_capacity = st.session_state.get('hydro_capacity', 0.0)
+                            battery_capacity = st.session_state.get('battery_capacity', 0.0)
+                            
+                            # We need base_rec_price, assume default if not in inputs?
+                            # Inputs usually don't store financial settings unless we added them.
+                            # Let's assume 8.00 or check inputs
+                            # inputs dict is available here
+                            
+                            # Load emissions if possible? 
+                            # This is tricky because we need to load the big CSV again.
+                            # Let's default to eGRID for safety in fallback mode
+                            
+                            results, df_result = utils.calculate_portfolio_metrics(
+                                df, solar_capacity, wind_capacity, region=region, 
+                                battery_capacity_mwh=battery_capacity,
+                                nuclear_capacity=nuclear_capacity,
+                                geothermal_capacity=geothermal_capacity,
+                                hydro_capacity=hydro_capacity,
+                                emissions_logic="egrid" # Safe default for fallback
+                            )
+                            
+                            st.session_state.portfolio_data = {
+                                "results": results,
+                                "df": df_result,
+                                "region": region,
+                                "solar_capacity": solar_capacity,
+                                "wind_capacity": wind_capacity,
+                                "nuclear_capacity": nuclear_capacity,
+                                "geothermal_capacity": geothermal_capacity,
+                                "hydro_capacity": hydro_capacity,
+                                "emissions_logic": "egrid"
+                            }
+                            st.session_state.analysis_complete = True
+                            st.toast("✓ Session regenerated from JSON inputs!", icon="🔄")
+                            
+                        except Exception as e2:
+                            st.error(f"❌ Regeneration failed: {str(e2)}")
 
         st.file_uploader("Upload Exported ZIP", type=['zip'], key="restore_uploader", on_change=restore_session_callback)
             
@@ -796,20 +901,20 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         
         if df['Solar_Gen'].sum() > 0:
             solar_cf = calc_cf(df['Solar_Gen'].sum(), data['solar_capacity'])
-            breakdown_parts.append(f"Solar: {df['Solar_Gen'].sum():,.0f} MWh ({solar_cf:.1f}% CF)")
+            breakdown_parts.append(f"Solar: {data['solar_capacity']:,.0f} MW - {df['Solar_Gen'].sum():,.0f} MWh ({solar_cf:.1f}% CF)")
         if df['Wind_Gen'].sum() > 0:
             wind_cf = calc_cf(df['Wind_Gen'].sum(), data['wind_capacity'])
-            breakdown_parts.append(f"Wind: {df['Wind_Gen'].sum():,.0f} MWh ({wind_cf:.1f}% CF)")
+            breakdown_parts.append(f"Wind: {data['wind_capacity']:,.0f} MW - {df['Wind_Gen'].sum():,.0f} MWh ({wind_cf:.1f}% CF)")
         if 'Nuclear_Gen' in df.columns and df['Nuclear_Gen'].sum() > 0:
-            nuclear_cf = calc_cf(df['Nuclear_Gen'].sum(), data['nuclear_capacity'])
-            breakdown_parts.append(f"Nuclear: {df['Nuclear_Gen'].sum():,.0f} MWh ({nuclear_cf:.1f}% CF)")
+            nuc_cf = calc_cf(df['Nuclear_Gen'].sum(), data['nuclear_capacity'])
+            breakdown_parts.append(f"Nuclear: {data['nuclear_capacity']:,.0f} MW - {df['Nuclear_Gen'].sum():,.0f} MWh ({nuc_cf:.1f}% CF)")
         if 'Geothermal_Gen' in df.columns and df['Geothermal_Gen'].sum() > 0:
             geo_cf = calc_cf(df['Geothermal_Gen'].sum(), data['geothermal_capacity'])
-            breakdown_parts.append(f"Geothermal: {df['Geothermal_Gen'].sum():,.0f} MWh ({geo_cf:.1f}% CF)")
+            breakdown_parts.append(f"Geothermal: {data['geothermal_capacity']:,.0f} MW - {df['Geothermal_Gen'].sum():,.0f} MWh ({geo_cf:.1f}% CF)")
         if 'Hydro_Gen' in df.columns and df['Hydro_Gen'].sum() > 0:
             hydro_cf = calc_cf(df['Hydro_Gen'].sum(), data['hydro_capacity'])
-            breakdown_parts.append(f"Hydro: {df['Hydro_Gen'].sum():,.0f} MWh ({hydro_cf:.1f}% CF)")
-        
+            breakdown_parts.append(f"Hydro: {data['hydro_capacity']:,.0f} MW - {df['Hydro_Gen'].sum():,.0f} MWh ({hydro_cf:.1f}% CF)")
+            
         if breakdown_parts:
             st.caption(" • ".join(breakdown_parts))
             
