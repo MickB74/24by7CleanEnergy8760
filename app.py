@@ -657,7 +657,7 @@ with st.sidebar:
 
         st.markdown("### 4. Financials")
         base_rec_price = st.number_input("Base REC Price ($/MWh)", value=8.00, step=0.50, min_value=0.0, help="Default based on Green-e certified national REC market prices")
-        use_rec_scaling = st.checkbox("Use Scarcity Pricing Logic", value=True, help="If checked, REC prices will scale based on time-of-day and seasonal scarcity (e.g., higher prices during winter evenings). If unchecked, the Base REC Price is used for all hours.")
+        use_rec_scaling = st.checkbox("Use Scarcity Pricing Logic", value=True, help="If checked, REC prices will scale based on time-of-day and seasonal scarcity (e.g., higher prices during winter evenings). If unchecked, the REC Price is used for all hours.")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -992,7 +992,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         st.metric(
             label="Total REC Cost for 24/7",
             value=format_currency(results['total_rec_cost']),
-            help="**REC Cost:** The estimated cost to purchase Renewable Energy Certificates (RECs) to cover your deficit hours (MWh Needed). Calculated as Deficit MWh * Base REC Price"
+            help="**REC Cost:** The estimated cost to purchase Renewable Energy Certificates (RECs) to cover your deficit hours (MWh Needed). Calculated as Deficit MWh * REC Price"
         )
         st.caption(f"Avg: ${avg_cost_per_mwh:.2f}/MWh")
     with f2:
@@ -1000,7 +1000,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         st.metric(
             label="Total REC Revenue from Overgeneration",
             value=format_currency(results['total_rec_revenue']),
-            help="**REC Revenue:** The estimated revenue from selling RECs associated with your excess generation. Calculated as Overgenerated MWh * Base REC Price"
+            help="**REC Revenue:** The estimated revenue from selling RECs associated with your excess generation. Calculated as Overgenerated MWh * REC Price"
         )
         st.caption(f"Avg: ${avg_revenue_per_mwh:.2f}/MWh")
     with f3:
