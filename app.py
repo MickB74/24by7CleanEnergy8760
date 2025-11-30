@@ -1416,11 +1416,25 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     for b_type in building_types:
         export_inputs[f"load_{b_type}"] = st.session_state.get(f"load_{b_type}", 0.0)
         
-    zip_data = utils.create_zip_export(results, df, "Eighty760_Analysis", region, inputs=export_inputs)
+    # Add filename input
+    custom_filename = st.text_input(
+        "Save as:",
+        value="Eighty760_Report",
+        help="Enter a name for your export file (without .zip extension)",
+        key="export_filename"
+    )
+    
+    # Ensure filename ends with .zip
+    if not custom_filename.endswith('.zip'):
+        zip_filename = f"{custom_filename}.zip"
+    else:
+        zip_filename = custom_filename
+    
+    zip_data = utils.create_zip_export(results, df, custom_filename.replace('.zip', ''), region, inputs=export_inputs)
     st.download_button(
             label="Download ZIP", # Label per spec, but functionality is ZIP for now
             data=zip_data,
-            file_name="Eighty760_Report.zip",
+            file_name=zip_filename,
             mime="application/zip",
             type="secondary"
     )
