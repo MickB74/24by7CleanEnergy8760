@@ -1207,7 +1207,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             *   **Fixed Price:** ${base_rec_price:.2f}/MWh for all hours.
             *   Scarcity scaling is disabled.
             """)
-        """)
+
     
     # Grid Emissions Intensity Heatmap
     st.subheader("Grid Emissions Intensity Heatmap (lb/MWh)")
