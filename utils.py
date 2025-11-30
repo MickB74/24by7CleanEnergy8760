@@ -214,11 +214,11 @@ def generate_synthetic_8760_data(year=2023, building_portfolio=None, region="Nat
     
     return df
 
-def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region="National Average", base_rec_price=0.50, battery_capacity_mwh=0.0, battery_efficiency=0.85, nuclear_capacity=0.0, geothermal_capacity=0.0, hydro_capacity=0.0, hourly_emissions_lb_mwh=None, emissions_logic="hourly"):
+def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region="National Average", base_rec_price=0.50, battery_capacity_mwh=0.0, battery_efficiency=0.85, nuclear_capacity=0.0, geothermal_capacity=0.0, hydro_capacity=0.0, hourly_emissions_lb_mwh=None, emissions_logic="hourly", use_rec_scaling=True):
     """
     Calculates portfolio metrics based on inputs.
     ...
-    hourly_emissions_lb_mwh: Optional Series or array of 8760 hourly emissions factors (lb/MWh)
+    use_rec_scaling: If True, applies scarcity pricing logic. If False, uses base_rec_price for all hours.
     """
     
     # Scale profiles
@@ -327,14 +327,15 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         cfe_score = (matched_energy_mwh / total_annual_load) * 100
     
     # Loss of Green Hour (Hours where Gen < Load)
-    loss_of_green_hours = df[df['Effective_Gen'] < df['Load_Actual']].shape[0]
+    loss_of_green_hours = (df['Effective_Gen'] < df['Load_Actual']).sum()
     loss_of_green_hour_percent = (loss_of_green_hours / 8760) * 100
     
-    # Overgeneration (Gen - Load, only positive values)
-    overgeneration = (df['Effective_Gen'] - df['Load_Actual']).clip(lower=0).sum()
+    # Overgeneration (MWh Over)
+    df['Overgeneration'] = np.maximum(0, df['Effective_Gen'] - df['Load_Actual'])
+    overgeneration = df['Overgeneration'].sum()
     
-    # Grid Consumption (Load - Gen, only positive values)
-    df['Grid_Consumption'] = (df['Load_Actual'] - df['Effective_Gen']).clip(lower=0)
+    # Grid Consumption (MWh Needed)
+    df['Grid_Consumption'] = np.maximum(0, df['Load_Actual'] - df['Effective_Gen'])
     grid_consumption = df['Grid_Consumption'].sum()
     
     # Emissions

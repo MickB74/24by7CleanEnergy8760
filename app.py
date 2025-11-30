@@ -498,7 +498,9 @@ with st.sidebar:
                             nuclear_capacity=nuclear_capacity,
                             geothermal_capacity=geothermal_capacity,
                             hydro_capacity=hydro_capacity,
-                            emissions_logic="egrid" # Safe default for fallback
+                            emissions_logic="egrid", # Safe default for fallback
+                            base_rec_price=base_rec_price_restored,
+                            use_rec_scaling=use_rec_scaling_restored
                         )
                         
                         st.session_state.portfolio_data = {
@@ -654,6 +656,7 @@ with st.sidebar:
 
         st.markdown("### 4. Financials")
         base_rec_price = st.number_input("Base REC Price ($/MWh)", value=8.00, step=0.50, min_value=0.0, help="Default based on Green-e certified national REC market prices")
+        use_rec_scaling = st.checkbox("Use Scarcity Pricing Logic", value=True, help="If checked, REC prices will scale based on time-of-day and seasonal scarcity (e.g., higher prices during winter evenings). If unchecked, the Base REC Price is used for all hours.")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
