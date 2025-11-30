@@ -307,9 +307,22 @@ if "region_selector" not in st.session_state:
 
 # Header
 logo_file = "logo_dark.png" if st.session_state.dark_mode else "logo.png"
-st.image(logo_file, width=600)
 header_color = "#FAFAFA" if st.session_state.dark_mode else "#285477"
-st.markdown(f"<h2 style='color: {header_color}; text-align: left; margin-top: -20px;'>8760 CE Simulator (v2.0)</h2>", unsafe_allow_html=True)
+
+# CSS to left-align the logo
+st.markdown("""
+    <style>
+    [data-testid="stImage"] {
+        text-align: left !important;
+    }
+    [data-testid="stImage"] img {
+        display: block;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.image(logo_file, width=600)
+st.markdown(f"<h2 style='color: {header_color}; text-align: left; margin-top: 10px;'>8760 CE Simulator (v2.0)</h2>", unsafe_allow_html=True)
 st.markdown("---")
 
 # Callbacks
