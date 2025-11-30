@@ -493,6 +493,12 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         total_avoided_lb = df['Hourly_Avoided_Emissions_lb'].sum()
         implied_annual_avoided_emissions_factor_lb_mwh = total_avoided_lb / total_effective_gen
     
+    # Calculate weighted average emission factor for location-based emissions
+    if total_annual_load > 0:
+        location_based_factor_lb_mwh = df['Hourly_Location_Emissions_lb'].sum() / total_annual_load
+    else:
+        location_based_factor_lb_mwh = egrid_factor_lb
+    
     # Results Dictionary
     results = {
         "total_annual_load": total_annual_load,
@@ -510,6 +516,7 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         "avoided_emissions_egrid_mt": avoided_emissions_egrid_mt,
         "avoided_emissions_hourly_mt": avoided_emissions_hourly_mt,
         "location_based_emissions_mt": location_based_emissions_mt,
+        "location_based_factor_lb_mwh": location_based_factor_lb_mwh,
         "mw_match_productivity": mw_match_productivity,
         "implied_annual_emissions_factor_lb_mwh": implied_annual_emissions_factor_lb_mwh,
         "implied_avoided_factor_lb_mwh": implied_annual_avoided_emissions_factor_lb_mwh,

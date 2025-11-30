@@ -1035,7 +1035,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             value=f"{results['location_based_emissions_mt']:,.0f} MT",
             help="Total emissions if no renewables were used (Total Load * Grid Factor)"
         )
-        st.caption(f"{results['total_annual_load']:,.0f} MWh * {results['egrid_factor_lb']:.1f} lb/MWh")
+        st.caption(f"{results['total_annual_load']:,.0f} MWh * {results['location_based_factor_lb_mwh']:.1f} lb/MWh")
     with c2:
         st.metric(
             label="Market Based 24/7 Emissions",
