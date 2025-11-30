@@ -1308,13 +1308,15 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         dominant_source = max(sources, key=sources.get)
         dominant_share = sources[dominant_source] / total_gen
         
+        region_name = st.session_state.get('region_selector', "ERCOT")
+        
         if dominant_share > 0.5:
-            insights.append(f"**{dominant_source}-dominant profile:** {dominant_share:.0%} of generation comes from {dominant_source} assets.")
+            insights.append(f"**Region: {region_name}.** **{dominant_source}-dominant profile:** {dominant_share:.0%} of generation comes from {dominant_source} assets.")
         else:
             # Show breakdown of all non-zero sources
             active_sources = {k: v for k, v in sources.items() if v > 0}
             breakdown = ", ".join([f"{k} ({v/total_gen:.0%})" for k, v in active_sources.items()])
-            insights.append(f"**Diversified profile:** {breakdown}")
+            insights.append(f"**Region: {region_name}.** **Diversified profile:** {breakdown}")
             
     # 2. Deficit Hours (Time of day with lowest CFE)
     # heatmap_agg is already calculated: ['MonthNum', 'Month', 'Hour', 'Hourly_CFE_Ratio']
