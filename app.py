@@ -1330,7 +1330,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         region_name = st.session_state.get('region_selector', "ERCOT")
         
         if dominant_share > 0.5:
-            insights.append(f"**Region: {region_name}.** **{dominant_source}-dominant profile:** {dominant_share:.0%} of generation comes from {dominant_source} assets.")
+            insights.append(f"**Region: {region_name}.** **{dominant_source}-dominant profile:** {dominant_share:.0%} of generation comes from {dominant_source} assets")
         else:
             # Show breakdown of all non-zero sources
             active_sources = {k: v for k, v in sources.items() if v > 0}
@@ -1346,12 +1346,12 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     
     # Format hour nicely
     worst_hour_str = pd.to_datetime(f"2023-01-01 {worst_hour}:00").strftime("%I %p").lstrip("0")
-    insights.append(f"**Lowest match time:** Average CFE drops to {worst_hour_val:.0%} around {worst_hour_str}.")
+    insights.append(f"**Lowest match time:** Average CFE drops to {worst_hour_val:.0%} around {worst_hour_str}")
 
     # 3. Seasonal Lows
     monthly_avg_gen = df.groupby(df['timestamp'].dt.month_name())['Total_Renewable_Gen'].mean()
     worst_month = monthly_avg_gen.idxmin()
-    insights.append(f"**Seasonal low:** Lowest average renewable generation observed in {worst_month}.")
+    insights.append(f"**Seasonal low:** Lowest average renewable generation observed in {worst_month}")
 
     st.subheader("Auto-Insights")
     st.caption(f"Debug: Solar Cap={st.session_state.get('solar_capacity')}, Wind Cap={st.session_state.get('wind_capacity')}")
