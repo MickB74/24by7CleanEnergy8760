@@ -174,8 +174,7 @@ def generate_synthetic_8760_data(year=2023, building_portfolio=None, region="Nat
     total_load = np.zeros(len(dates))
     
     if not building_portfolio:
-        # Default fallback
-        building_portfolio = [{'type': 'Office', 'annual_mwh': 1000}]
+        building_portfolio = []
         
     for building in building_portfolio:
         b_type = building.get('type', 'Office')
