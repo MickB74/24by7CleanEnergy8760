@@ -1035,9 +1035,9 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             value=f"{results['location_based_emissions_mt']:,.0f} MT",
             help="Total emissions if no renewables were used (Total Load * Grid Factor)"
         )
-        st.caption(f"{results['total_annual_load']:,.0f} MWh * {results['location_based_factor_lb_mwh']:.1f} lbs")
+        st.caption(f"{results['total_annual_load']:,.0f} MWh * {results['location_based_factor_lb_mwh']:.1f} lbs per MWh")
         if results.get('grid_emissions_hourly_mt') is not None:
-            st.caption(f"**Implied Annual Factor:** {results['location_based_factor_lb_mwh']:.1f} lbs")
+            st.caption(f"**Implied Annual Factor:** {results['location_based_factor_lb_mwh']:.1f} lbs per MWh")
     with c2:
         st.metric(
             label="Market Based 24/7 Emissions",
@@ -1047,9 +1047,9 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         if results.get('grid_emissions_hourly_mt') is not None:
              implied_factor = results.get('implied_annual_emissions_factor_lb_mwh', 0)
              st.caption(f"{results['grid_consumption']:,.0f} MWh (Grid) * Hourly Factors")
-             st.caption(f"**Implied Annual Factor:** {implied_factor:.1f} lbs")
+             st.caption(f"**Implied Annual Factor:** {implied_factor:.1f} lbs per MWh")
         else:
-             st.caption(f"{results['grid_consumption']:,.0f} MWh (Grid) * {results['egrid_factor_lb']:.1f} lbs")
+             st.caption(f"{results['grid_consumption']:,.0f} MWh (Grid) * {results['egrid_factor_lb']:.1f} lbs per MWh")
     with c3:
         st.metric(
             label="Consequential Emission Reduction",
@@ -1059,9 +1059,9 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         if results.get('avoided_emissions_hourly_mt') is not None:
              implied_avoided_factor = results.get('implied_avoided_factor_lb_mwh', 0)
              st.caption(f"{results['effective_gen']:,.0f} MWh (Gen) * Hourly Factors")
-             st.caption(f"**Implied Annual Factor:** {implied_avoided_factor:.1f} lbs")
+             st.caption(f"**Implied Annual Factor:** {implied_avoided_factor:.1f} lbs per MWh")
         else:
-             st.caption(f"{results['effective_gen']:,.0f} MWh (Gen) * {results['egrid_factor_lb']:.1f} lbs")
+             st.caption(f"{results['effective_gen']:,.0f} MWh (Gen) * {results['egrid_factor_lb']:.1f} lbs per MWh")
             
     with st.expander("Show Emissions Calculation Examples"):
         st.caption("Examples of how emissions are calculated for a single hour (randomly selected).")
