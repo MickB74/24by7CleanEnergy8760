@@ -448,8 +448,8 @@ with st.sidebar:
                                     }
                                     st.session_state.analysis_complete = True
                                     st.toast("✓ Data restored!", icon="✅")
-                            else:
-                                st.error("❌ Invalid ZIP format. Must contain _summary.json and _8760_data.csv")
+                        else:
+                            st.error("❌ Invalid ZIP format. Must contain _summary.json and _8760_data.csv")
                     except Exception as e:
                         st.warning(f"⚠️ CSV Restore failed: {str(e)}. Attempting to regenerate from JSON inputs...")
                         
