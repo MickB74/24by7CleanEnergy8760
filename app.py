@@ -1069,7 +1069,14 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             ex_row = df.sample(1).iloc[0]
             
             # Location Based
-            loc_em = ex_row['Load_Actual'] * results['egrid_factor_lb']
+            if emissions_logic == 'hourly' and 'Emissions_Factor_Hourly_lb_MWh' in ex_row:
+                loc_factor = ex_row['Emissions_Factor_Hourly_lb_MWh']
+                loc_em = ex_row['Hourly_Location_Emissions_lb']
+                loc_desc = f"{ex_row['Load_Actual']:.1f} MWh (Total Load) × {loc_factor:.1f} lb/MWh"
+            else:
+                loc_factor = results['egrid_factor_lb']
+                loc_em = ex_row['Load_Actual'] * loc_factor
+                loc_desc = f"{ex_row['Load_Actual']:.1f} MWh (Total Load) × {loc_factor:.1f} lb/MWh"
             
             # Market Based
             if emissions_logic == 'hourly' and 'Hourly_Grid_Emissions_lb' in ex_row:
@@ -1093,7 +1100,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
             **Time**: {ex_row['timestamp'].strftime('%B %d, %H:00')}
             
             **1. Location Based Emissions**
-            - {ex_row['Load_Actual']:.1f} MWh (Total Load) × {results['egrid_factor_lb']:.1f} lb/MWh = **{loc_em:,.1f} lbs**
+            - {loc_desc} = **{loc_em:,.1f} lbs**
             
             **2. Market Based 24/7 Emissions**
             - {mkt_desc} = **{mkt_em:,.1f} lbs**
