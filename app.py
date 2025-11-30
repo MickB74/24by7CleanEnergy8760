@@ -450,68 +450,68 @@ with st.sidebar:
                                     st.toast("✓ Data restored!", icon="✅")
                         else:
                             st.error("❌ Invalid ZIP format. Must contain _summary.json and _8760_data.csv")
-                    except Exception as e:
-                        st.warning(f"⚠️ CSV Restore failed: {str(e)}. Attempting to regenerate from JSON inputs...")
+                except Exception as e:
+                    st.warning(f"⚠️ CSV Restore failed: {str(e)}. Attempting to regenerate from JSON inputs...")
+                    
+                    # Fallback: Regenerate from JSON inputs
+                    try:
+                        # 1. Re-run Generation
+                        # Re-construct portfolio list from session state (which was just restored)
+                        portfolio_list = []
+                        for b_type in building_types:
+                            val = st.session_state.get(f"load_{b_type}", 0)
+                            if val > 0:
+                                portfolio_list.append({'type': b_type, 'annual_mwh': val})
                         
-                        # Fallback: Regenerate from JSON inputs
-                        try:
-                            # 1. Re-run Generation
-                            # Re-construct portfolio list from session state (which was just restored)
-                            portfolio_list = []
-                            for b_type in building_types:
-                                val = st.session_state.get(f"load_{b_type}", 0)
-                                if val > 0:
-                                    portfolio_list.append({'type': b_type, 'annual_mwh': val})
-                            
-                            region = st.session_state.get('region_selector', "ERCOT")
-                            
-                            # Note: If original used "Upload File", we might not have the file.
-                            # But we can try to use the inputs we have.
-                            
-                            df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region, seed=42)
-                            
-                            # 2. Re-run Metrics
-                            solar_capacity = st.session_state.get('solar_capacity', 0.0)
-                            wind_capacity = st.session_state.get('wind_capacity', 0.0)
-                            nuclear_capacity = st.session_state.get('nuclear_capacity', 0.0)
-                            geothermal_capacity = st.session_state.get('geothermal_capacity', 0.0)
-                            hydro_capacity = st.session_state.get('hydro_capacity', 0.0)
-                            battery_capacity = st.session_state.get('battery_capacity', 0.0)
-                            
-                            # We need base_rec_price, assume default if not in inputs?
-                            # Inputs usually don't store financial settings unless we added them.
-                            # Let's assume 8.00 or check inputs
-                            # inputs dict is available here
-                            
-                            # Load emissions if possible? 
-                            # This is tricky because we need to load the big CSV again.
-                            # Let's default to eGRID for safety in fallback mode
-                            
-                            results, df_result = utils.calculate_portfolio_metrics(
-                                df, solar_capacity, wind_capacity, region=region, 
-                                battery_capacity_mwh=battery_capacity,
-                                nuclear_capacity=nuclear_capacity,
-                                geothermal_capacity=geothermal_capacity,
-                                hydro_capacity=hydro_capacity,
-                                emissions_logic="egrid" # Safe default for fallback
-                            )
-                            
-                            st.session_state.portfolio_data = {
-                                "results": results,
-                                "df": df_result,
-                                "region": region,
-                                "solar_capacity": solar_capacity,
-                                "wind_capacity": wind_capacity,
-                                "nuclear_capacity": nuclear_capacity,
-                                "geothermal_capacity": geothermal_capacity,
-                                "hydro_capacity": hydro_capacity,
-                                "emissions_logic": "egrid"
-                            }
-                            st.session_state.analysis_complete = True
-                            st.toast("✓ Session regenerated from JSON inputs!", icon="🔄")
-                            
-                        except Exception as e2:
-                            st.error(f"❌ Regeneration failed: {str(e2)}")
+                        region = st.session_state.get('region_selector', "ERCOT")
+                        
+                        # Note: If original used "Upload File", we might not have the file.
+                        # But we can try to use the inputs we have.
+                        
+                        df = utils.generate_synthetic_8760_data(year=2023, building_portfolio=portfolio_list, region=region, seed=42)
+                        
+                        # 2. Re-run Metrics
+                        solar_capacity = st.session_state.get('solar_capacity', 0.0)
+                        wind_capacity = st.session_state.get('wind_capacity', 0.0)
+                        nuclear_capacity = st.session_state.get('nuclear_capacity', 0.0)
+                        geothermal_capacity = st.session_state.get('geothermal_capacity', 0.0)
+                        hydro_capacity = st.session_state.get('hydro_capacity', 0.0)
+                        battery_capacity = st.session_state.get('battery_capacity', 0.0)
+                        
+                        # We need base_rec_price, assume default if not in inputs?
+                        # Inputs usually don't store financial settings unless we added them.
+                        # Let's assume 8.00 or check inputs
+                        # inputs dict is available here
+                        
+                        # Load emissions if possible? 
+                        # This is tricky because we need to load the big CSV again.
+                        # Let's default to eGRID for safety in fallback mode
+                        
+                        results, df_result = utils.calculate_portfolio_metrics(
+                            df, solar_capacity, wind_capacity, region=region, 
+                            battery_capacity_mwh=battery_capacity,
+                            nuclear_capacity=nuclear_capacity,
+                            geothermal_capacity=geothermal_capacity,
+                            hydro_capacity=hydro_capacity,
+                            emissions_logic="egrid" # Safe default for fallback
+                        )
+                        
+                        st.session_state.portfolio_data = {
+                            "results": results,
+                            "df": df_result,
+                            "region": region,
+                            "solar_capacity": solar_capacity,
+                            "wind_capacity": wind_capacity,
+                            "nuclear_capacity": nuclear_capacity,
+                            "geothermal_capacity": geothermal_capacity,
+                            "hydro_capacity": hydro_capacity,
+                            "emissions_logic": "egrid"
+                        }
+                        st.session_state.analysis_complete = True
+                        st.toast("✓ Session regenerated from JSON inputs!", icon="🔄")
+                        
+                    except Exception as e2:
+                        st.error(f"❌ Regeneration failed: {str(e2)}")
 
         st.file_uploader("Upload Exported ZIP", type=['zip'], key="restore_uploader", on_change=restore_session_callback)
             
