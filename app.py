@@ -655,50 +655,13 @@ with st.sidebar:
         st.markdown("### 3. Storage")
         battery_capacity = st.number_input("Battery Capacity (MWh)", min_value=0.0, step=100.0, value=0.0, help="Battery storage capacity for optimized charge/discharge")
 
+        st.markdown("### 4. Financials")
+        base_rec_price = st.number_input("Base REC Price ($/MWh)", value=8.00, step=0.50, min_value=0.0, help="Default based on Green-e certified national REC market prices")
+        use_rec_scaling = st.checkbox("Use Scarcity Pricing Logic", value=True, help="If checked, REC prices will scale based on time-of-day and seasonal scarcity (e.g., higher prices during winter evenings). If unchecked, the Base REC Price is used for all hours.")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
         generate_clicked = st.form_submit_button("Generate Analysis", type="primary")
-
-    st.markdown("### 4. Financials (Live Updates)")
-    base_rec_price = st.number_input("Base REC Price ($/MWh)", value=8.00, step=0.50, min_value=0.0, help="Default based on Green-e certified national REC market prices")
-    use_rec_scaling = st.checkbox("Use Scarcity Pricing Logic", value=True, help="If checked, REC prices will scale based on time-of-day and seasonal scarcity (e.g., higher prices during winter evenings). If unchecked, the Base REC Price is used for all hours.")
-
-    # Re-calculate metrics if analysis is complete and financials changed (or just always on rerun)
-    if st.session_state.analysis_complete and st.session_state.portfolio_data and not generate_clicked:
-        # Get current data
-        df_current = st.session_state.portfolio_data['df']
-        
-        # Retrieve capacities from session state (stored during generation)
-        # We need to make sure these are stored. In the generate_clicked block, we store them.
-        # See lines 506-516 in the view I saw earlier (for restore). 
-        # I need to verify they are stored for the "Generate Analysis" path too.
-        # Assuming they are, let's try to access them.
-        
-        try:
-            # Re-run metrics
-            results, df_result = utils.calculate_portfolio_metrics(
-                df_current, 
-                solar_capacity=st.session_state.portfolio_data.get('solar_capacity', 0),
-                wind_capacity=st.session_state.portfolio_data.get('wind_capacity', 0),
-                region=st.session_state.portfolio_data.get('region', "National Average"),
-                battery_capacity_mwh=st.session_state.portfolio_data.get('battery_capacity', 0),
-                nuclear_capacity=st.session_state.portfolio_data.get('nuclear_capacity', 0),
-                geothermal_capacity=st.session_state.portfolio_data.get('geothermal_capacity', 0),
-                hydro_capacity=st.session_state.portfolio_data.get('hydro_capacity', 0),
-                emissions_logic=st.session_state.portfolio_data.get('emissions_logic', 'hourly'),
-                hourly_emissions_lb_mwh=None, # We assume emissions are already in DF or handled? 
-                # Wait, calculate_portfolio_metrics uses hourly_emissions_lb_mwh to add 'Emissions_Factor_lb_MWh' column if missing?
-                # If df_current already has it, we might be fine.
-                # But let's check utils.py.
-                base_rec_price=base_rec_price,
-                use_rec_scaling=use_rec_scaling
-            )
-            
-            # Update session state
-            st.session_state.portfolio_data['results'] = results
-            st.session_state.portfolio_data['df'] = df_result
-            
-        except Exception as e:
-            # If something goes wrong (e.g. missing keys), just ignore or log
-            print(f"Debug: Could not update financials: {e}")
 
         if generate_clicked:
             with st.spinner("Calculating..."):
