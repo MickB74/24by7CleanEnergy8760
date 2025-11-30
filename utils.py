@@ -430,35 +430,36 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         
     # --- Categorization Logic (Fixed Grid-Based Patterns) ---
     
-    # Calculate scaling factor based on user input (Default base is $8.00)
-    # If user inputs $16.00, everything scales by 2x.
-    rec_scale_factor = base_rec_price / 8.0
-    
-    # Cat 6: Critical Scarcity (Winter Evening Peak: 18:00-20:00 Dec-Feb)
-    # These are the hours when grid-wide scarcity is typically highest
-    mask_cat6 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([18, 19, 20]))
-    df.loc[mask_cat6, 'REC_Price_USD'] = 20.00 * rec_scale_factor
-    
-    # Cat 5: Winter Morning Scarcity (06:00–09:00 Dec–Feb) -> Hours 6, 7, 8
-    mask_cat5 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([6, 7, 8])) & (~mask_cat6)
-    df.loc[mask_cat5, 'REC_Price_USD'] = 7.00 * rec_scale_factor
-    
-    # Cat 4: Evening Peak (17:00–21:00 Most days) -> Hours 17, 18, 19, 20, 21
-    mask_cat4 = (df['Hour'].isin([17, 18, 19, 20, 21])) & (~mask_cat6) & (~mask_cat5)
-    df.loc[mask_cat4, 'REC_Price_USD'] = 10.00 * rec_scale_factor
-    
-    # Cat 3: Shoulder Daylight (07:00–10:00 & 15:00–18:00) -> Hours 7, 8, 9, 15, 16, 17
-    mask_cat3_hours = df['Hour'].isin([7, 8, 9, 15, 16])
-    mask_cat3 = mask_cat3_hours & (~mask_cat6) & (~mask_cat5) & (~mask_cat4)
-    df.loc[mask_cat3, 'REC_Price_USD'] = 3.00 * rec_scale_factor
-    
-    # Cat 1: Super-abundant mid-day (10:00–15:00 Mar–Oct) -> Hours 10, 11, 12, 13, 14
-    mask_cat1 = (df['Month'].isin(range(3, 11))) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
-    df.loc[mask_cat1, 'REC_Price_USD'] = 0.25 * rec_scale_factor
-    
-    # Cat 2: Typical mid-day (10:00–15:00 Nov-Feb) -> Hours 10, 11, 12, 13, 14
-    mask_cat2 = (df['Month'].isin([1, 2, 11, 12])) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
-    df.loc[mask_cat2, 'REC_Price_USD'] = 1.00 * rec_scale_factor
+    if use_rec_scaling:
+        # Calculate scaling factor based on user input (Default base is $8.00)
+        # If user inputs $16.00, everything scales by 2x.
+        rec_scale_factor = base_rec_price / 8.0
+        
+        # Cat 6: Critical Scarcity (Winter Evening Peak: 18:00-20:00 Dec-Feb)
+        # These are the hours when grid-wide scarcity is typically highest
+        mask_cat6 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([18, 19, 20]))
+        df.loc[mask_cat6, 'REC_Price_USD'] = 20.00 * rec_scale_factor
+        
+        # Cat 5: Winter Morning Scarcity (06:00–09:00 Dec–Feb) -> Hours 6, 7, 8
+        mask_cat5 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([6, 7, 8])) & (~mask_cat6)
+        df.loc[mask_cat5, 'REC_Price_USD'] = 7.00 * rec_scale_factor
+        
+        # Cat 4: Evening Peak (17:00–21:00 Most days) -> Hours 17, 18, 19, 20, 21
+        mask_cat4 = (df['Hour'].isin([17, 18, 19, 20, 21])) & (~mask_cat6) & (~mask_cat5)
+        df.loc[mask_cat4, 'REC_Price_USD'] = 10.00 * rec_scale_factor
+        
+        # Cat 3: Shoulder Daylight (07:00–10:00 & 15:00–18:00) -> Hours 7, 8, 9, 15, 16, 17
+        mask_cat3_hours = df['Hour'].isin([7, 8, 9, 15, 16])
+        mask_cat3 = mask_cat3_hours & (~mask_cat6) & (~mask_cat5) & (~mask_cat4)
+        df.loc[mask_cat3, 'REC_Price_USD'] = 3.00 * rec_scale_factor
+        
+        # Cat 1: Super-abundant mid-day (10:00–15:00 Mar–Oct) -> Hours 10, 11, 12, 13, 14
+        mask_cat1 = (df['Month'].isin(range(3, 11))) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
+        df.loc[mask_cat1, 'REC_Price_USD'] = 0.25 * rec_scale_factor
+        
+        # Cat 2: Typical mid-day (10:00–15:00 Nov-Feb) -> Hours 10, 11, 12, 13, 14
+        mask_cat2 = (df['Month'].isin([1, 2, 11, 12])) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
+        df.loc[mask_cat2, 'REC_Price_USD'] = 1.00 * rec_scale_factor
     
     # Calculate Costs and Revenues
     # Cost: When Net Load > 0 (Deficit) -> Negative Value (Outflow)
