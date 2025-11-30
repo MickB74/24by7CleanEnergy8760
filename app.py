@@ -1015,7 +1015,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         st.metric(
             label="Location Based Emissions",
             value=f"{results['location_based_emissions_mt']:,.0f} MT",
-            help="Total emissions if no renewables were used (Total Load * Grid Factor). Note: If there is overgeneration, Avoided + Grid Emissions will be greater than Location Based, as you avoid extra emissions by exporting clean energy."
+            help="Total emissions if no renewables were used (Total Load * Grid Factor)."
         )
         st.caption(f"{results['total_annual_load']:,.0f} MWh * {results['egrid_factor_lb']:.1f} lb/MWh")
     with c2:
