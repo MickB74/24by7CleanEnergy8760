@@ -1,7 +1,7 @@
-# Theoretical Framework and Algorithmic Specification of the 8760 Clean Energy Simulator
+# Theoretical Framework and Algorithmic Specification of the Eighty760 Clean Energy Simulator
 
 ## Abstract
-This document delineates the mathematical architecture and computational methodologies underpinning the "8760 Clean Energy Simulator." The system is a stochastic discrete-time simulation engine designed to model, optimize, and value "24/7 Carbon-Free Energy" (CFE) procurement portfolios. Operating at an hourly temporal resolution ($t \in [0, 8760]$), the simulator integrates probabilistic load modeling, parametric renewable generation synthesis, heuristic storage dispatch, and scarcity-based financial valuation to assess the efficacy of hybrid energy portfolios (Solar, Wind, Nuclear, Geothermal, Hydro, BESS) in achieving decarbonization targets.
+This document delineates the mathematical architecture and computational methodologies underpinning the "Eighty760 Clean Energy Simulator." The system is a stochastic discrete-time simulation engine designed to model, optimize, and value "24/7 Carbon-Free Energy" (CFE) procurement portfolios. Operating at an hourly temporal resolution ($t \in [0, 8760]$), the simulator integrates probabilistic load modeling, parametric renewable generation synthesis, heuristic storage dispatch, and scarcity-based financial valuation to assess the efficacy of hybrid energy portfolios (Solar, Wind, Nuclear, Geothermal, Hydro, BESS) in achieving decarbonization targets.
 
 ## 1. Stochastic Load Modeling Methodology
 The system constructs aggregate demand profiles through a bottom-up summation of distinct building typologies, each characterized by a deterministic diurnal base load, a seasonal thermal conditioning component, and stochastic variability.
@@ -119,4 +119,4 @@ The system supports dual-methodology carbon accounting:
     $$ \text{Avoided Emissions} = \sum_{t=0}^{8760} G_{effective}(t) \times EF_{marg}(t) $$
 
 ## 6. Conclusion
-The 8760 Clean Energy Simulator provides a rigorous, stochastically grounded framework for evaluating the complex interplay between variable renewable generation, dynamic building loads, and energy storage. By integrating physical dispatch logic with scarcity-based financial valuation, it offers a high-fidelity approximation of real-world CFE procurement dynamics.
+The Eighty760 Clean Energy Simulator provides a rigorous, stochastically grounded framework for evaluating the complex interplay between variable renewable generation, dynamic building loads, and energy storage. By integrating physical dispatch logic with scarcity-based financial valuation, it offers a high-fidelity approximation of real-world CFE procurement dynamics.

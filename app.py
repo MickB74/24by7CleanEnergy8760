@@ -322,7 +322,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.image(logo_file, width=600)
-st.markdown(f"<h2 style='color: {header_color}; text-align: left; margin-top: 10px;'>8760 CE Simulator (v2.0)</h2>", unsafe_allow_html=True)
+st.markdown(f"<h2 style='color: {header_color}; text-align: left; margin-top: 10px;'>Eighty760 CE Simulator (v2.0)</h2>", unsafe_allow_html=True)
 st.markdown("---")
 
 # Callbacks
@@ -1119,7 +1119,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     st.markdown("---")
     
     # Chart Section
-    st.subheader("Load vs Renewables (8760)")
+    st.subheader("Load vs Renewables (Eighty760)")
     
     # Simplified Sparkline/Line Chart
     base = alt.Chart(df.reset_index()).encode(x=alt.X('timestamp', title=None, axis=None))
