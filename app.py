@@ -1332,7 +1332,111 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
         else:
             st.info("No hours with Net Revenue found (No overgeneration).")
 
-    # Auto-Insights
+
+    
+    # 5. Seasonal Generation Profile Chart
+    st.subheader("Seasonal Generation Profile")
+    st.caption("Average monthly generation and load profile.")
+    
+    # Prepare Data
+    profile_df = df.copy()
+    profile_df['Month'] = profile_df['timestamp'].dt.month_name()
+    profile_df['MonthNum'] = profile_df['timestamp'].dt.month
+    
+    # Calculate Mean per Month
+    # Filter for active sources only
+    cols_to_avg = ['Load_Actual']
+    if df['Solar_Gen'].sum() > 0: cols_to_avg.append('Solar_Gen')
+    if df['Wind_Gen'].sum() > 0: cols_to_avg.append('Wind_Gen')
+    if df['Battery_Discharge'].sum() > 0: cols_to_avg.append('Battery_Discharge')
+    if 'Nuclear_Gen' in df.columns and df['Nuclear_Gen'].sum() > 0: cols_to_avg.append('Nuclear_Gen')
+    if 'Geothermal_Gen' in df.columns and df['Geothermal_Gen'].sum() > 0: cols_to_avg.append('Geothermal_Gen')
+    if 'Hydro_Gen' in df.columns and df['Hydro_Gen'].sum() > 0: cols_to_avg.append('Hydro_Gen')
+    
+    monthly_avg = profile_df.groupby(['MonthNum', 'Month'])[cols_to_avg].mean().reset_index()
+    
+    # Melt Generation columns for Stacked Area
+    gen_cols = [c for c in cols_to_avg if c != 'Load_Actual']
+    monthly_gen_melted = monthly_avg.melt(id_vars=['MonthNum', 'Month'], value_vars=gen_cols, var_name='Source', value_name='MW')
+    
+    # Clean Source Names for Legend
+    source_map = {
+        'Solar_Gen': 'Solar',
+        'Wind_Gen': 'Wind',
+        'Battery_Discharge': 'Battery',
+        'Nuclear_Gen': 'Nuclear',
+        'Geothermal_Gen': 'Geothermal',
+        'Hydro_Gen': 'Hydro'
+    }
+    monthly_gen_melted['Source'] = monthly_gen_melted['Source'].map(source_map)
+    
+    # Define Colors (Dynamic based on active sources)
+    # Master color map
+    if st.session_state.dark_mode:
+        color_map = {
+            'Solar': '#4A4A4A', 
+            'Wind': '#757575', 
+            'Battery': '#A0A0A0', 
+            'Nuclear': '#D3D3D3', 
+            'Geothermal': '#E0E0E0', 
+            'Hydro': '#F5F5F5',
+            'Load': '#FAFAFA'
+        }
+        load_color = '#FAFAFA'
+    else:
+        color_map = {
+            'Solar': '#606060', 
+            'Wind': '#909090', 
+            'Battery': '#C0C0C0', 
+            'Nuclear': '#404040', 
+            'Geothermal': '#505050', 
+            'Hydro': '#707070',
+            'Load': '#000000'
+        }
+        load_color = '#000000'
+    
+    # Build domain and range based on what's actually in the data
+    active_sources = monthly_gen_melted['Source'].unique().tolist()
+    # Ensure Load is in the domain for the legend
+    domain_gen = active_sources + ['Load']
+    range_gen = [color_map.get(s, '#808080') for s in domain_gen]
+        
+    # Chart Construction
+    months_order = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    
+    # 1. Stacked Area Chart (Generation)
+    area_gen = alt.Chart(monthly_gen_melted).mark_area(opacity=0.8).encode(
+        x=alt.X('Month:N', sort=months_order, title=None),
+        y=alt.Y('MW:Q', title='Average Megawatts (MW)', stack=True),
+        color=alt.Color('Source:N', scale=alt.Scale(domain=domain_gen, range=range_gen), legend=alt.Legend(orient='right', title=None)),
+        order=alt.Order('Source:N', sort='descending'),
+        tooltip=['Month', 'Source', alt.Tooltip('MW', format='.1f')]
+    )
+    
+    # 2. Line Chart (Load)
+    # We use transform_calculate to add a 'Source' field so it can share the legend
+    line_load_chart = alt.Chart(monthly_avg).transform_calculate(
+        Source="'Load'"
+    ).mark_line(strokeDash=[5, 5], strokeWidth=2).encode(
+        x=alt.X('Month:N', sort=months_order),
+        y='Load_Actual:Q',
+        color=alt.Color('Source:N', scale=alt.Scale(domain=domain_gen, range=range_gen)),
+        tooltip=[alt.Tooltip('Month', title='Month'), alt.Tooltip('Load_Actual', title='Avg Load (MW)', format='.1f')]
+    )
+    
+    # Combine
+    combo_chart = alt.layer(area_gen, line_load_chart).resolve_scale(
+        y='shared'
+    ).properties(
+        height=350
+    )
+    
+    st.altair_chart(combo_chart, use_container_width=True)
+    
+    # Export
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Auto-Insights (Moved after Chart)
     # Auto-Insights Logic
     insights = []
     
@@ -1398,8 +1502,9 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     st.caption(f"Debug: Solar Cap={st.session_state.get('solar_capacity')}, Wind Cap={st.session_state.get('wind_capacity')}")
     for insight in insights:
         st.markdown(f"* {insight}")
-    
+
     # Export
+
     st.markdown("<br>", unsafe_allow_html=True)
     
     # Collect inputs for export
