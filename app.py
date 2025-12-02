@@ -1552,7 +1552,7 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     cols_to_avg = ['Load_Actual']
     if df['Solar_Gen'].sum() > 0: cols_to_avg.append('Solar_Gen')
     if df['Wind_Gen'].sum() > 0: cols_to_avg.append('Wind_Gen')
-    if df['Battery_Discharge'].sum() > 0: cols_to_avg.append('Battery_Discharge')
+    if 'Battery_Discharge' in df.columns and df['Battery_Discharge'].sum() > 0: cols_to_avg.append('Battery_Discharge')
     if 'Nuclear_Gen' in df.columns and df['Nuclear_Gen'].sum() > 0: cols_to_avg.append('Nuclear_Gen')
     if 'Geothermal_Gen' in df.columns and df['Geothermal_Gen'].sum() > 0: cols_to_avg.append('Geothermal_Gen')
     if 'Hydro_Gen' in df.columns and df['Hydro_Gen'].sum() > 0: cols_to_avg.append('Hydro_Gen')
@@ -1578,24 +1578,24 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     # Master color map
     if st.session_state.dark_mode:
         color_map = {
-            'Solar': '#4A4A4A', 
-            'Wind': '#757575', 
-            'Battery': '#A0A0A0', 
-            'Nuclear': '#D3D3D3', 
-            'Geothermal': '#E0E0E0', 
-            'Hydro': '#F5F5F5',
-            'Load': '#FAFAFA'
+            'Solar': '#FFD700',      # Gold
+            'Wind': '#00D9FF',       # Cyan
+            'Battery': '#00FF00',    # Lime
+            'Nuclear': '#FF00FF',    # Magenta
+            'Geothermal': '#FF4500', # OrangeRed
+            'Hydro': '#1E90FF',      # DodgerBlue
+            'Load': '#FFFFFF'        # White
         }
-        load_color = '#FAFAFA'
+        load_color = '#FFFFFF'
     else:
         color_map = {
-            'Solar': '#606060', 
-            'Wind': '#909090', 
-            'Battery': '#C0C0C0', 
-            'Nuclear': '#404040', 
-            'Geothermal': '#505050', 
-            'Hydro': '#707070',
-            'Load': '#000000'
+            'Solar': '#FFC107',      # Amber
+            'Wind': '#00BCD4',       # Cyan
+            'Battery': '#4CAF50',    # Green
+            'Nuclear': '#9C27B0',    # Purple
+            'Geothermal': '#FF5722', # Deep Orange
+            'Hydro': '#2196F3',      # Blue
+            'Load': '#000000'        # Black
         }
         load_color = '#000000'
     
