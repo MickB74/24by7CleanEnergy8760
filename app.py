@@ -362,6 +362,12 @@ with st.sidebar:
     st.markdown("---")
     
 
+    st.markdown("---")
+    
+    # Navigation
+    if st.button("View Calculations & Formulas", use_container_width=True, type="secondary"):
+        st.switch_page("pages/Calculations.py")
+        
     st.subheader("Configuration")
 
     # Control Buttons with Custom Colors
