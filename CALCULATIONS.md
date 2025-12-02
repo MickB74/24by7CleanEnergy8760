@@ -94,11 +94,11 @@ $$ \text{Factor}_{Implied} = \frac{\sum \text{Emissions}_{Grid}}{\sum \text{Grid
 **Net Load (MWh)**
 $$ \text{Load}_{Net} = \text{Load}_{Actual} - \text{Gen}_{Effective} $$
 
-**REC Cost ($)**
+**REC Cost (USD)**
 Cost to buy RECs when in deficit ($\text{Load}_{Net} > 0$).
 $$ \text{Cost} = -\text{Load}_{Net} \times \text{Price}_{REC} $$
 
-**REC Revenue ($)**
+**REC Revenue (USD)**
 Revenue from selling RECs when in surplus ($\text{Load}_{Net} < 0$).
 $$ \text{Revenue} = -\text{Load}_{Net} \times \text{Price}_{REC} $$
 *(Note: $-\text{Load}_{Net}$ is positive when in surplus)*
