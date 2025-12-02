@@ -552,10 +552,7 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Navigation
-    if st.button("View Calculations & Formulas", use_container_width=True, type="secondary"):
-        st.query_params["page"] = "calculations"
-        st.rerun()
+
         
     st.subheader("Configuration")
 
@@ -885,6 +882,12 @@ with st.sidebar:
                     st.session_state.analysis_complete = True
                     st.rerun()
 
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    # Navigation (Moved here)
+    if st.button("View Calculations & Formulas", use_container_width=True, type="secondary"):
+        st.query_params["page"] = "calculations"
+        st.rerun()
 
     st.markdown("---")
     with st.container(border=True):
