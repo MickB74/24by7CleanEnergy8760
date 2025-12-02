@@ -4,8 +4,8 @@ This document outlines the definitions and formulas used in the Eighty760 Clean 
 
 ## 1. Generation & Load Scaling
 
-**Solar/Wind Generation (MWh)**
-Scales the normalized profile (0-100) to the user-defined capacity.
+**Generation Scaling (MWh)**
+Scales the normalized profile (0-100) to the user-defined capacity for all technologies (Solar, Wind, Nuclear, Geothermal, Hydro).
 $$ \text{Gen}_{source} = \left( \frac{\text{Profile}_{source}}{\text{max}(\text{Profile}_{source})} \right) \times \text{Capacity}_{MW} $$
 
 **Actual Load (MWh)**
