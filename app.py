@@ -22,59 +22,169 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Initialize dark mode in session state BEFORE using it
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
 # Check for Calculations Page Navigation (Query Param)
 # This avoids needing a 'pages/' directory restart
 if "page" in st.query_params and st.query_params["page"] == "calculations":
     # Render Calculations Page
     
-    # Inject CSS for Markdown (same as main app but ensuring it's loaded)
-    # We can reuse the main app's CSS logic if we let it run, but we want to stop execution after rendering calc.
-    # So let's just inject the necessary CSS here.
-    st.markdown("""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@700&display=swap');
-            
-            /* Dark Mode Support (Basic) */
-            @media (prefers-color-scheme: dark) {
-                .stApp { background-color: #0E1117; color: #FAFAFA; }
-                h1, h2, h3 { color: #FAFAFA !important; }
-            }
-
-            html, body, [class*="css"] {
-                font-family: 'Inter', sans-serif;
-            }
-            
-            .block-container {
-                padding-top: 2rem;
-                padding-bottom: 2rem;
-                max-width: 1440px;
-            }
-            
-            /* Markdown Styling */
-            .stMarkdown h1 {
-                color: #285477;
-            }
-            @media (prefers-color-scheme: dark) {
-                .stMarkdown h1 { color: #00D9FF !important; }
-            }
-            
-            .stMarkdown h2 {
-                border-bottom: 1px solid #E0E0E0;
-                padding-bottom: 0.5rem;
-            }
-            
-            /* Code Blocks */
-            code {
-                color: #00D9FF !important;
-                background-color: rgba(255, 255, 255, 0.1) !important;
-                padding: 0.2rem 0.4rem;
-                border-radius: 4px;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+    # Define CSS based on Theme
+    if st.session_state.dark_mode:
+        # Dark Mode Styling
+        css = """
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@700&display=swap');
+                
+                /* Main Background */
+                .stApp {
+                    background-color: #0E1117 !important;
+                    color: #FAFAFA !important;
+                }
+                
+                /* Typography */
+                html, body, [class*="css"] {
+                    font-family: 'Inter', sans-serif;
+                }
+                h1, h2, h3, h4, h5, h6 {
+                    color: #FAFAFA !important;
+                    font-weight: 700;
+                }
+                h1 {
+                    color: #00D9FF !important; /* Cyan Highlight */
+                    font-size: 2.5rem;
+                    margin-bottom: 1.5rem;
+                }
+                h2 {
+                    color: #FAFAFA !important;
+                    border-bottom: 1px solid rgba(0, 217, 255, 0.3);
+                    padding-bottom: 0.5rem;
+                    margin-top: 2rem;
+                }
+                h3 {
+                    color: #B0B0B0 !important;
+                    margin-top: 1.5rem;
+                }
+                p, li {
+                    font-size: 1.05rem;
+                    line-height: 1.6;
+                    color: #E0E0E0 !important;
+                }
+                
+                /* Code & Formulas */
+                code {
+                    color: #00D9FF !important;
+                    background-color: rgba(255, 255, 255, 0.05) !important;
+                    padding: 0.2rem 0.4rem;
+                    border-radius: 4px;
+                    font-family: 'IBM Plex Mono', monospace;
+                }
+                .katex {
+                    font-size: 1.1em;
+                    color: #FFD700 !important; /* Gold for formulas */
+                }
+                
+                /* Blockquotes */
+                blockquote {
+                    border-left: 3px solid #00D9FF !important;
+                    background-color: rgba(0, 217, 255, 0.05) !important;
+                    padding: 1rem !important;
+                    color: #FAFAFA !important;
+                }
+                
+                /* Sidebar */
+                section[data-testid="stSidebar"] {
+                    background-color: #262730 !important;
+                }
+                section[data-testid="stSidebar"] .stButton button {
+                    background-color: transparent !important;
+                    border: 1px solid #FAFAFA !important;
+                    color: #FAFAFA !important;
+                }
+                section[data-testid="stSidebar"] .stButton button:hover {
+                    border-color: #00D9FF !important;
+                    color: #00D9FF !important;
+                }
+            </style>
+        """
+    else:
+        # Light Mode Styling
+        css = """
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@700&display=swap');
+                
+                /* Main Background */
+                .stApp {
+                    background-color: #FFFFFF !important;
+                    color: #262730 !important;
+                }
+                
+                /* Typography */
+                html, body, [class*="css"] {
+                    font-family: 'Inter', sans-serif;
+                }
+                h1, h2, h3, h4, h5, h6 {
+                    color: #262730 !important;
+                    font-weight: 700;
+                }
+                h1 {
+                    color: #285477 !important; /* Brand Blue */
+                    font-size: 2.5rem;
+                    margin-bottom: 1.5rem;
+                }
+                h2 {
+                    color: #285477 !important;
+                    border-bottom: 1px solid #E0E0E0;
+                    padding-bottom: 0.5rem;
+                    margin-top: 2rem;
+                }
+                h3 {
+                    color: #666666 !important;
+                    margin-top: 1.5rem;
+                }
+                p, li {
+                    font-size: 1.05rem;
+                    line-height: 1.6;
+                    color: #333333 !important;
+                }
+                
+                /* Code & Formulas */
+                code {
+                    color: #D63384 !important;
+                    background-color: #F8F9FA !important;
+                    padding: 0.2rem 0.4rem;
+                    border-radius: 4px;
+                    font-family: 'IBM Plex Mono', monospace;
+                }
+                .katex {
+                    font-size: 1.1em;
+                    color: #285477 !important;
+                }
+                
+                /* Blockquotes */
+                blockquote {
+                    border-left: 3px solid #285477 !important;
+                    background-color: #F0F2F6 !important;
+                    padding: 1rem !important;
+                    color: #262730 !important;
+                }
+                
+                /* Sidebar */
+                section[data-testid="stSidebar"] {
+                    background-color: #F0F2F6 !important;
+                }
+            </style>
+        """
+    
+    st.markdown(css, unsafe_allow_html=True)
 
     # Sidebar for Back Button
     with st.sidebar:
+        # Dark Mode Toggle in Calculations Page
+        st.toggle("Dark Mode", key="dark_mode_calc", value=st.session_state.dark_mode, on_change=lambda: st.session_state.update({"dark_mode": not st.session_state.dark_mode}))
+        st.markdown("---")
         if st.button("← Back to Simulator", use_container_width=True):
             st.query_params.clear()
             st.rerun()
@@ -100,9 +210,7 @@ if "page" in st.query_params and st.query_params["page"] == "calculations":
     # Stop execution so the main app doesn't render below
     st.stop()
 
-# Initialize dark mode in session state BEFORE using it
-if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = False
+
 
 # Inject Custom CSS based on theme
 if st.session_state.dark_mode:
