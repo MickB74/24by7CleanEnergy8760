@@ -71,19 +71,19 @@ $$ \text{GridCons} = \max(0, \text{Load}_{Actual} - \text{Gen}_{Effective}) $$
 
 ## 5. Emissions
 
-**Grid Emissions (lb)**
+**Grid Emissions (lbs)**
 Emissions associated with grid consumption.
 $$ \text{Emissions}_{Grid} = \text{GridCons} \times \text{Factor}_{Emissions} $$
 
-**Avoided Emissions (lb)**
+**Avoided Emissions (lbs)**
 Emissions avoided by using renewable generation instead of grid power.
 $$ \text{Emissions}_{Avoided} = \text{Gen}_{Effective} \times \text{Factor}_{Emissions} $$
 
-**Location-Based Emissions (lb)**
+**Location-Based Emissions (lbs)**
 Total emissions if the entire load was served by the grid.
 $$ \text{Emissions}_{Location} = \text{Load}_{Actual} \times \text{Factor}_{Emissions} $$
 
-**Implied Annual Emissions Factor (lb/MWh)**
+**Implied Annual Emissions Factor (lbs/MWh)**
 Weighted average emissions factor of the grid electricity actually consumed.
 $$ \text{Factor}_{Implied} = \frac{\sum \text{Emissions}_{Grid}}{\sum \text{GridCons}} $$
 
