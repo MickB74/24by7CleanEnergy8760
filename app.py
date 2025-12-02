@@ -22,6 +22,84 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Check for Calculations Page Navigation (Query Param)
+# This avoids needing a 'pages/' directory restart
+if "page" in st.query_params and st.query_params["page"] == "calculations":
+    # Render Calculations Page
+    
+    # Inject CSS for Markdown (same as main app but ensuring it's loaded)
+    # We can reuse the main app's CSS logic if we let it run, but we want to stop execution after rendering calc.
+    # So let's just inject the necessary CSS here.
+    st.markdown("""
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@700&display=swap');
+            
+            /* Dark Mode Support (Basic) */
+            @media (prefers-color-scheme: dark) {
+                .stApp { background-color: #0E1117; color: #FAFAFA; }
+                h1, h2, h3 { color: #FAFAFA !important; }
+            }
+
+            html, body, [class*="css"] {
+                font-family: 'Inter', sans-serif;
+            }
+            
+            .block-container {
+                padding-top: 2rem;
+                padding-bottom: 2rem;
+                max-width: 1440px;
+            }
+            
+            /* Markdown Styling */
+            .stMarkdown h1 {
+                color: #285477;
+            }
+            @media (prefers-color-scheme: dark) {
+                .stMarkdown h1 { color: #00D9FF !important; }
+            }
+            
+            .stMarkdown h2 {
+                border-bottom: 1px solid #E0E0E0;
+                padding-bottom: 0.5rem;
+            }
+            
+            /* Code Blocks */
+            code {
+                color: #00D9FF !important;
+                background-color: rgba(255, 255, 255, 0.1) !important;
+                padding: 0.2rem 0.4rem;
+                border-radius: 4px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Sidebar for Back Button
+    with st.sidebar:
+        if st.button("← Back to Simulator", use_container_width=True):
+            st.query_params.clear()
+            st.rerun()
+        st.markdown("---")
+
+    # Main Content
+    try:
+        # Read the CALCULATIONS.md file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_dir, "CALCULATIONS.md")
+        
+        with open(file_path, "r") as f:
+            content = f.read()
+        
+        # Render the content
+        st.markdown(content, unsafe_allow_html=True)
+        
+    except FileNotFoundError:
+        st.error("⚠️ CALCULATIONS.md file not found in the root directory.")
+    except Exception as e:
+        st.error(f"❌ Error reading calculations file: {e}")
+        
+    # Stop execution so the main app doesn't render below
+    st.stop()
+
 # Initialize dark mode in session state BEFORE using it
 if 'dark_mode' not in st.session_state:
     st.session_state.dark_mode = False
@@ -364,8 +442,12 @@ with st.sidebar:
 
     st.markdown("---")
     
+    st.markdown("---")
+    
     # Navigation
-    st.page_link("pages/Calculations.py", label="View Calculations & Formulas", icon="📐")
+    if st.button("View Calculations & Formulas", use_container_width=True, type="secondary"):
+        st.query_params["page"] = "calculations"
+        st.rerun()
         
     st.subheader("Configuration")
 
