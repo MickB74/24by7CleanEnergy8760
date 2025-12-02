@@ -688,6 +688,10 @@ with st.sidebar:
         st.markdown("### 4. Financials")
         base_rec_price = st.number_input("Base REC Price ($/MWh)", value=8.00, step=0.50, min_value=0.0, help="Default based on Green-e certified national REC market prices")
         use_rec_scaling = st.checkbox("Use Scarcity Pricing Logic", value=True, help="If checked, REC prices will scale based on time-of-day and seasonal scarcity (e.g., higher prices during winter evenings). If unchecked, the REC Price is used for all hours.")
+        
+        scarcity_intensity = 1.0
+        if use_rec_scaling:
+            scarcity_intensity = st.slider("Scarcity Intensity", min_value=0.0, max_value=3.0, value=1.0, step=0.1, help="Adjusts the magnitude of price swings. 1.0 = Standard, 0.0 = Flat Price, >1.0 = More Volatile.")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -858,7 +862,7 @@ with st.sidebar:
                         st.stop()  # Hard stop - don't continue with analysis
 
                     # Calculate Metrics
-                    results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions, emissions_logic=emissions_logic, use_rec_scaling=use_rec_scaling)
+                    results, df_result = utils.calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region=region, base_rec_price=base_rec_price, battery_capacity_mwh=battery_capacity, nuclear_capacity=nuclear_capacity, geothermal_capacity=geothermal_capacity, hydro_capacity=hydro_capacity, hourly_emissions_lb_mwh=hourly_emissions, emissions_logic=emissions_logic, use_rec_scaling=use_rec_scaling, scarcity_intensity=scarcity_intensity)
                     
                     if emissions_logic == "hourly" and results.get('grid_emissions_hourly_mt') is None:
                         st.toast(f"Hourly data unavailable for {region}. Using eGRID.", icon="⚠️")
@@ -877,7 +881,8 @@ with st.sidebar:
                         "hydro_capacity": hydro_capacity,
                         "battery_capacity": battery_capacity,
                         "emissions_logic": emissions_logic,
-                        "emissions_source": emissions_source
+                        "emissions_source": emissions_source,
+                        "scarcity_intensity": scarcity_intensity
                     }
                     st.session_state.analysis_complete = True
                     st.rerun()

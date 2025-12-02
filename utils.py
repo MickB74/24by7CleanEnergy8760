@@ -214,11 +214,12 @@ def generate_synthetic_8760_data(year=2023, building_portfolio=None, region="Nat
     
     return df
 
-def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region="National Average", base_rec_price=0.50, battery_capacity_mwh=0.0, battery_efficiency=0.85, nuclear_capacity=0.0, geothermal_capacity=0.0, hydro_capacity=0.0, hourly_emissions_lb_mwh=None, emissions_logic="hourly", use_rec_scaling=True):
+def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=1.0, region="National Average", base_rec_price=0.50, battery_capacity_mwh=0.0, battery_efficiency=0.85, nuclear_capacity=0.0, geothermal_capacity=0.0, hydro_capacity=0.0, hourly_emissions_lb_mwh=None, emissions_logic="hourly", use_rec_scaling=True, scarcity_intensity=1.0):
     """
     Calculates portfolio metrics based on inputs.
     ...
-    use_rec_scaling: If True, applies scarcity pricing logic. If False, uses base_rec_price for all hours.
+    use_rec_scaling: If True, applies scarcity pricing logic.
+    scarcity_intensity: Multiplier for the deviation from base price (1.0 = standard logic, 0.0 = flat price, >1.0 = more volatile).
     """
     
     # Scale profiles
@@ -433,32 +434,35 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
     if use_rec_scaling:
         # Apply multipliers directly to the user's base REC price
         # Cat 6 (2.0x), Cat 5 (1.4x), Cat 4 (1.2x), Cat 3 (1.0x), Cat 2 (0.75x), Cat 1 (0.45x)
+        # Apply Scarcity Intensity: New_Mult = 1.0 + (Base_Mult - 1.0) * Intensity
         
+        def get_mult(base_mult):
+            return max(0.0, 1.0 + (base_mult - 1.0) * scarcity_intensity)
+
         # Cat 6: Critical Scarcity (Winter Evening Peak: 18:00-20:00 Dec-Feb)
-        # These are the hours when grid-wide scarcity is typically highest
         mask_cat6 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([18, 19, 20]))
-        df.loc[mask_cat6, 'REC_Price_USD'] = base_rec_price * 2.0
+        df.loc[mask_cat6, 'REC_Price_USD'] = base_rec_price * get_mult(2.0)
         
         # Cat 5: Winter Morning Scarcity (06:00–09:00 Dec–Feb) -> Hours 6, 7, 8
         mask_cat5 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([6, 7, 8])) & (~mask_cat6)
-        df.loc[mask_cat5, 'REC_Price_USD'] = base_rec_price * 1.4
+        df.loc[mask_cat5, 'REC_Price_USD'] = base_rec_price * get_mult(1.4)
         
         # Cat 4: Evening Peak (17:00–21:00 Most days) -> Hours 17, 18, 19, 20, 21
         mask_cat4 = (df['Hour'].isin([17, 18, 19, 20, 21])) & (~mask_cat6) & (~mask_cat5)
-        df.loc[mask_cat4, 'REC_Price_USD'] = base_rec_price * 1.2
+        df.loc[mask_cat4, 'REC_Price_USD'] = base_rec_price * get_mult(1.2)
         
         # Cat 3: Shoulder Daylight (07:00–10:00 & 15:00–18:00) -> Hours 7, 8, 9, 15, 16, 17
         mask_cat3_hours = df['Hour'].isin([7, 8, 9, 15, 16])
         mask_cat3 = mask_cat3_hours & (~mask_cat6) & (~mask_cat5) & (~mask_cat4)
-        df.loc[mask_cat3, 'REC_Price_USD'] = base_rec_price * 1.0
+        df.loc[mask_cat3, 'REC_Price_USD'] = base_rec_price * get_mult(1.0)
         
         # Cat 1: Super-abundant mid-day (10:00–15:00 Mar–Oct) -> Hours 10, 11, 12, 13, 14
         mask_cat1 = (df['Month'].isin(range(3, 11))) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
-        df.loc[mask_cat1, 'REC_Price_USD'] = base_rec_price * 0.45
+        df.loc[mask_cat1, 'REC_Price_USD'] = base_rec_price * get_mult(0.45)
         
         # Cat 2: Typical mid-day (10:00–15:00 Nov-Feb) -> Hours 10, 11, 12, 13, 14
         mask_cat2 = (df['Month'].isin([1, 2, 11, 12])) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
-        df.loc[mask_cat2, 'REC_Price_USD'] = base_rec_price * 0.75
+        df.loc[mask_cat2, 'REC_Price_USD'] = base_rec_price * get_mult(0.75)
     
     # Calculate Costs and Revenues
     # Cost: When Net Load > 0 (Deficit) -> Negative Value (Outflow)
