@@ -365,8 +365,7 @@ with st.sidebar:
     st.markdown("---")
     
     # Navigation
-    if st.button("View Calculations & Formulas", use_container_width=True, type="secondary"):
-        st.switch_page("pages/Calculations.py")
+    st.page_link("pages/Calculations.py", label="View Calculations & Formulas", icon="📐")
         
     st.subheader("Configuration")
 
