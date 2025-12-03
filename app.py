@@ -545,12 +545,6 @@ def randomize_scenario():
 # Sidebar Inputs
 with st.sidebar:
     st.toggle("Dark Mode", key="dark_mode")
-    st.markdown("---")
-    
-
-    st.markdown("---")
-    
-    st.markdown("---")
     
 
         
