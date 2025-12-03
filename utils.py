@@ -441,15 +441,15 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
 
         # Cat 6: Critical Scarcity (Winter Evening Peak: 18:00-20:00 Dec-Feb)
         mask_cat6 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([18, 19, 20]))
-        df.loc[mask_cat6, 'REC_Price_USD'] = base_rec_price * get_mult(2.0)
+        df.loc[mask_cat6, 'REC_Price_USD'] = base_rec_price * get_mult(6.66)
         
         # Cat 5: Winter Morning Scarcity (06:00–09:00 Dec–Feb) -> Hours 6, 7, 8
         mask_cat5 = (df['Month'].isin([12, 1, 2])) & (df['Hour'].isin([6, 7, 8])) & (~mask_cat6)
-        df.loc[mask_cat5, 'REC_Price_USD'] = base_rec_price * get_mult(1.4)
+        df.loc[mask_cat5, 'REC_Price_USD'] = base_rec_price * get_mult(2.33)
         
         # Cat 4: Evening Peak (17:00–21:00 Most days) -> Hours 17, 18, 19, 20, 21
         mask_cat4 = (df['Hour'].isin([17, 18, 19, 20, 21])) & (~mask_cat6) & (~mask_cat5)
-        df.loc[mask_cat4, 'REC_Price_USD'] = base_rec_price * get_mult(1.2)
+        df.loc[mask_cat4, 'REC_Price_USD'] = base_rec_price * get_mult(3.33)
         
         # Cat 3: Shoulder Daylight (07:00–10:00 & 15:00–18:00) -> Hours 7, 8, 9, 15, 16, 17
         mask_cat3_hours = df['Hour'].isin([7, 8, 9, 15, 16])
@@ -458,11 +458,11 @@ def calculate_portfolio_metrics(df, solar_capacity, wind_capacity, load_scaling=
         
         # Cat 1: Super-abundant mid-day (10:00–15:00 Mar–Oct) -> Hours 10, 11, 12, 13, 14
         mask_cat1 = (df['Month'].isin(range(3, 11))) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
-        df.loc[mask_cat1, 'REC_Price_USD'] = base_rec_price * get_mult(0.45)
+        df.loc[mask_cat1, 'REC_Price_USD'] = base_rec_price * get_mult(0.08)
         
         # Cat 2: Typical mid-day (10:00–15:00 Nov-Feb) -> Hours 10, 11, 12, 13, 14
         mask_cat2 = (df['Month'].isin([1, 2, 11, 12])) & (df['Hour'].isin([10, 11, 12, 13, 14])) & (~mask_cat6)
-        df.loc[mask_cat2, 'REC_Price_USD'] = base_rec_price * get_mult(0.75)
+        df.loc[mask_cat2, 'REC_Price_USD'] = base_rec_price * get_mult(0.33)
     
     # Calculate Costs and Revenues
     # Cost: When Net Load > 0 (Deficit) -> Negative Value (Outflow)
