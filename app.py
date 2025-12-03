@@ -1416,18 +1416,18 @@ if st.session_state.analysis_complete and st.session_state.portfolio_data:
     
     with st.expander("Show REC Valuation Logic"):
         if use_rec_scaling:
-            # Calculate dynamic prices for display
-            scale = base_rec_price / 8.0
+            # Calculate dynamic prices for display based on Base Price
+            # Multipliers: Critical=2.0, Winter Morning=1.4, Evening=1.2, Shoulder=1.0, Mid-Day=0.75, Abundant=0.45
             
             st.markdown(f"""
             **REC Pricing Categories (based on grid scarcity):**
             
-            *   **Critical Scarcity (${20.00 * scale:.2f}/MWh):** Winter Evening Peak (Dec-Feb, 18:00-20:00). Highest value.
-            *   **Evening Peak (${10.00 * scale:.2f}/MWh):** Typical Evening Peak (17:00-21:00). High value.
-            *   **Winter Morning Scarcity (${7.00 * scale:.2f}/MWh):** Winter Mornings (Dec-Feb, 06:00-09:00).
-            *   **Shoulder Daylight (${3.00 * scale:.2f}/MWh):** Morning/Afternoon transition (07:00-10:00 & 15:00-18:00).
-            *   **Typical Mid-Day (${1.00 * scale:.2f}/MWh):** Nov-Feb Mid-day (10:00-15:00).
-            *   **Super-Abundant Mid-Day (${0.25 * scale:.2f}/MWh):** Mar-Oct Mid-day (10:00-15:00). Lowest value due to solar abundance.
+            *   **Critical Scarcity (${base_rec_price * 2.0:.2f}/MWh):** Winter Evening Peak (Dec-Feb, 18:00-20:00). Highest value.
+            *   **Evening Peak (${base_rec_price * 1.2:.2f}/MWh):** Typical Evening Peak (17:00-21:00). High value.
+            *   **Winter Morning Scarcity (${base_rec_price * 1.4:.2f}/MWh):** Winter Mornings (Dec-Feb, 06:00-09:00).
+            *   **Shoulder Daylight (${base_rec_price * 1.0:.2f}/MWh):** Morning/Afternoon transition (07:00-10:00 & 15:00-18:00).
+            *   **Typical Mid-Day (${base_rec_price * 0.75:.2f}/MWh):** Nov-Feb Mid-day (10:00-15:00).
+            *   **Super-Abundant Mid-Day (${base_rec_price * 0.45:.2f}/MWh):** Mar-Oct Mid-day (10:00-15:00). Lowest value due to solar abundance.
             """)
         else:
             st.markdown(f"""
